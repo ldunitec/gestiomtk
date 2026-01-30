@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Checkpoint Ahorro Anual</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    padding: 15px;
+}
+
+h1 {
+    text-align: center;
+}
+
+.total {
+    text-align: center;
+    font-size: 22px;
+    color: green;
+    margin-bottom: 10px;
+}
+
+.progress-container {
+    width: 100%;
+    background: #e9ecef;
+    border-radius: 10px;
+    height: 20px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.4s ease;
+}
+
+.progress-text {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+}
+
+.day {
+    background: #fff;
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,.1);
+}
+
+.day.locked {
+    background: #d1e7dd;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+input[type="checkbox"] {
+    transform: scale(1.3);
+}
+</style>
+</head>
+
+<body>
+
+<h1>Ahorro Anual</h1>
+
+<div class="total">
+    Total Ahorrado: L. <span id="total">0</span>
+</div>
+
+<div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="progress-text">
+    Progreso del año: <strong><span id="progressText">0</span>%</strong>
+</div>
+
+<div class="grid" id="days"></div>
+
+<script>
+/* ===============================
+   LOCAL STORAGE SEGURO (iOS)
+================================ */
+function guardarLocal(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        window._tempStorage = window._tempStorage || {};
+        window._tempStorage[key] = value;
+    }
+}
+
+function leerLocal(key, defaultValue) {
+    try {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : defaultValue;
+    } catch (e) {
+        return (window._tempStorage && window._tempStorage[key]) || defaultValue;
+    }
+}
+
+/* ===============================
+   VARIABLES
+================================ */
+const daysContainer = document.getElementById('days');
+const totalSpan = document.getElementById('total');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+
+let savedDays = leerLocal('daysChecked', []);
+let total = 0;
+
+/* ===============================
+   FUNCIONES
+================================ */
+function recalcularTotal() {
+    total = savedDays.reduce((sum, d) => sum + d, 0);
+    totalSpan.textContent = total;
+    guardarLocal('total', total);
+}
+
+function actualizarProgreso() {
+    const porcentaje = ((savedDays.length / 365) * 100).toFixed(2);
+    progressBar.style.width = porcentaje + '%';
+    progressText.textContent = porcentaje;
+}
+
+/* ===============================
+   GOOGLE SHEETS (OPCIONAL)
+================================ */
+function guardarEnGoogleSheets(dia, valor, total, accion) {
+    fetch("PEGA_AQUI_TU_URL", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dia, valor, total, accion })
+    }).catch(() => {});
+}
+
+/* ===============================
+   CREAR LOS 365 DÍAS
+================================ */
+for (let day = 1; day <= 365; day++) {
+
+    const div = document.createElement('div');
+    div.className = 'day';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+
+    if (savedDays.includes(day)) {
+        checkbox.checked = true;
+        checkbox.disabled = true;
+        div.classList.add('locked');
+    }
+
+    const handler = () => {
+        if (!savedDays.includes(day)) {
+            savedDays.push(day);
+            guardarLocal('daysChecked', savedDays);
+            recalcularTotal();
+            actualizarProgreso();
+            guardarEnGoogleSheets(day, day, total, "AGREGADO");
+
+            checkbox.checked = true;
+            checkbox.disabled = true;
+            div.classList.add('locked');
+        }
+    };
+
+    checkbox.addEventListener('change', handler);
+    checkbox.addEventListener('touchend', handler); // iOS FIX
+
+    div.innerHTML = `<strong>Día ${day}</strong><br>L. ${day}<br>`;
+    div.appendChild(checkbox);
+    daysContainer.appendChild(div);
+}
+
+/* ===============================
+   INICIALIZAR
+================================ */
+recalcularTotal();
+actualizarProgreso();
+</script>
+
+</body>
+</html>

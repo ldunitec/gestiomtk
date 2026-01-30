@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title> Ahorro Anual</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .total {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 15px 0;
+            text-align: center;
+            color: green;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+        }
+
+        .day {
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+        }
+
+        .day input {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        .day.locked {
+            background: #d1e7dd;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        button {
+            margin: 20px auto;
+            display: block;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.4s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1> Ahorro Anual</h1>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <p class="progress-text">
+        Progreso del año: <strong><span id="progressText">0</span>%</strong>
+    </p>
+
+
+    <div class="total">
+        Total Ahorrado: L. <span id="total">0</span>
+    </div>
+
+
+    <div class="grid" id="days"></div>
+
+    <button onclick="resetear()">Reiniciar Todo</button>
+
+    <script>
+        const daysContainer = document.getElementById('days');
+        const totalSpan = document.getElementById('total');
+
+        let savedDays = JSON.parse(localStorage.getItem('daysChecked')) || [];
+        let total = Number(localStorage.getItem('total')) || 0;
+
+        totalSpan.textContent = total;
+
+        for (let day = 1; day <= 365; day++) {
+            const div = document.createElement('div');
+            div.className = 'day';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = day;
+
+            if (savedDays.includes(day)) {
+                checkbox.checked = true;
+            }
+            if (savedDays.includes(day)) {
+                checkbox.checked = true;
+                checkbox.disabled = true;
+                div.classList.add('locked');
+            }
+
+
+            checkbox.addEventListener('change', function () {
+                if (this.checked) {
+                    savedDays.push(day);
+                    total += day;
+                } else {
+                    savedDays = savedDays.filter(d => d !== day);
+                    total -= day;
+                }
+
+                ///////
+                // 
+                if (this.checked) {
+                    savedDays.push(day);
+                    // total += day;
+
+                    guardarEnGoogleSheets(day, day, total, "AGREGADO");
+                } else {
+                    savedDays = savedDays.filter(d => d !== day);
+                    // total -= day;
+
+                    guardarEnGoogleSheets(day, day, total, "ELIMINADO");
+                }
+
+                ////////
+
+                localStorage.setItem('daysChecked', JSON.stringify(savedDays));
+                // recalcularTotal();
+                localStorage.setItem('total', total);
+                totalSpan.textContent = total;
+               
+
+            });
+
+            // location.reload();
+             actualizarProgreso();
+
+            div.innerHTML = `<strong>Día ${day}</strong><br> ${day}<br>`;
+            div.appendChild(checkbox);
+            daysContainer.appendChild(div);
+        }
+
+
+
+        function resetear() {
+            if (confirm('¿Deseas borrar todo el progreso?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+        function guardarEnGoogleSheets(dia, valor, total, accion) {
+            fetch("https://script.google.com/macros/s/AKfycbybopwowgLjpHCUwC2ZDJ3hgC4pxEzxEE6k3QhlzyKUax11cw9FXQBN7ZuXXfOc34hi/exec", {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    dia,
+                    valor,
+                    total,
+                    accion
+                })
+            });
+        }
+
+        function actualizarProgreso() {
+            const porcentaje = ((savedDays.length / 365) * 100).toFixed(2);
+            document.getElementById('progressBar').style.width = porcentaje + '%';
+            document.getElementById('progressText').textContent = porcentaje;
+        }
+        function recalcularTotal() {
+            total = savedDays.reduce((sum, d) => sum + d, 0);
+            totalSpan.textContent = total;
+            localStorage.setItem('total', total);
+        }
+
+
+    </script>
+
+</body>
+
+</html>

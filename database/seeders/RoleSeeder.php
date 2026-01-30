@@ -1,0 +1,171 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+
+class RoleSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $admin = Role::firstOrCreate(['name' => 'ADMINISTRADOR']);
+        $administrativo = Role::firstOrCreate(['name' => 'ADMINISTRATIVO']);
+        $empleado = Role::firstOrCreate(['name' => 'EMPLEADO']);
+        $editor = Role::firstOrCreate(['name' => 'EDITOR']);
+
+        $permisos = [
+
+            'admin.configuracion.index',
+            'admin.configuracion.store',
+            'admin.roles.index',
+            'admin.roles.create',
+            'admin.roles.store',
+            'admin.roles.show',
+            'admin.roles.edit',
+            'admin.roles.update',
+            'admin.roles.destroy',
+            'admin.roles.actualizarPermisos',
+            'admin.roles.permisos',
+            'admin.administrativos.index',
+            'admin.administrativos.create',
+            'admin.administrativos.store',
+            'admin.administrativos.show',
+            'admin.administrativos.edit',
+            'admin.administrativos.update',
+            'admin.administrativos.destroy',
+            'admin.marcas.index',
+            'admin.marcas.create',
+            'admin.marcas.store',
+            'admin.marcas.show',
+            'admin.marcas.edit',
+            'admin.marcas.update',
+            'admin.marcas.destroy',
+            'admin.modelos.index',
+            'admin.modelos.create',
+            'admin.modelos.store',
+            'admin.modelos.show',
+            'admin.modelos.edit',
+            'admin.modelos.update',
+            'admin.modelos.destroy',
+            'admin.departamentos.index',
+            'admin.departamentos.create',
+            'admin.departamentos.store',
+            'admin.departamentos.show',
+            'admin.departamentos.edit',
+            'admin.departamentos.update',
+            'admin.departamentos.destroy',
+            'admin.empleados.index',
+            'admin.empleados.create',
+            'admin.empleados.store',
+            'admin.empleados.show',
+            'admin.empleados.edit',
+            'admin.empleados.update',
+            'admin.empleados.destroy',
+            'admin.equipos.index',
+            'admin.equipos.getModelos',
+            'admin.equipos.create',
+            'admin.equipos.store',
+            'admin.equipos.show',
+            'admin.equipos.edit',
+            'admin.equipos.update',
+            'admin.equipos.destroy',
+            'admin.equipos.ping',
+            'admin.equipos.ping',
+            'admin.equipos.cambiarEstado',
+            'admin.paneles.index',
+            'admin.paneles.getModelos',
+            'admin.paneles.create',
+            'admin.paneles.store',
+            'admin.paneles.show',
+            'admin.paneles.edit',
+            'admin.paneles.update',
+            'admin.paneles.destroy',
+            'admin.paneles.ping',
+            'admin.patch_panels.index',
+            'admin.patch_panels.create',
+            'admin.patch_panels.store',
+            'admin.patch_panels.show',
+            'admin.patch_panels.edit',
+            'admin.patch_panels.update',
+            'admin.patch_panels.destroy',
+            'admin.switchs.index',
+            'admin.switchs.create',
+            'admin.switchs.store',
+            'admin.switchs.show',
+            'admin.switchs.edit',
+            'admin.switchs.update',
+            'admin.switchs.destroy',
+            'admin.switchs.crear_puerto',
+            'admin.ports.index',
+            'admin.ports.create',
+            'admin.ports.store',
+            'admin.ports.show',
+            'admin.ports.edit',
+            'admin.ports.update',
+            'admin.ports.destroy',
+            'admin.connections.index',
+            'admin.connections.create',
+            'admin.connections.store',
+            'admin.connections.show',
+            'admin.connections.edit',
+            'admin.connections.update',
+            'admin.connections.destroy',
+            'admin.agenda.index',
+            'admin.agenda.store',
+            'admin.agenda.show',
+            'admin.agenda.update',
+            'admin.agenda.updateNoAgendado',
+            'admin.agenda.completar',
+            'admin.agenda.destroy',
+            'admin.agenda.updateDate',
+            'admin.agenda.updateDateItem',
+            'admin.agenda.updateEstado',
+            'admin.drivers.index',
+            'admin.drivers.create',
+            'admin.drivers.store',
+            'admin.drivers.show',
+            'admin.drivers.edit',
+            'admin.drivers.update',
+            'admin.drivers.destroy',
+            'drivers.download',
+            'categories.ajax.store',
+            'models.ajax.store',
+            'admin.files.index',
+            'admin.files.create',
+            'admin.files.store',
+            'admin.files.show',
+            'admin.files.edit',
+            'admin.files.update',
+            'admin.files.destroy',
+            'admin.files.destroy',
+            'admin.brands.index',
+            'admin.brands.show',
+            'admin.brands.store',
+            'admin.notes.store',
+            'files.download',
+            'admin.marcaciones.index',
+            'dmin.marcaciones.importar',
+            'admin.marcaciones.configurar',
+            'admin.notas.index',
+            'admin.notas.create',
+            'admin.notas.store',
+            'admin.notas.show',
+            'admin.notas.edit',
+            'admin.notas.update',
+            'admin.notas.destroy',
+
+
+        ];
+
+        foreach ($permisos as $permiso) {
+            $p = Permission::firstOrCreate(['name' => $permiso]);
+            $p->syncRoles([$admin]); // Reemplaza roles previos si los hubiera
+        }
+    }
+}

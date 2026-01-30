@@ -1,0 +1,276 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Agenda;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use GuzzleHttp\Client;
+use App\Services\TodoistService;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+
+class AgendaController extends Controller
+{
+    // Mostrar calendario y tareas sin fecha
+    public function index()
+    {
+        // Eventos ya agendados
+        $events = Agenda::whereNotNull('fecha_inicio')
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'title' => $event->titulo,
+                    'start' => $event->fecha_inicio,
+                    'end' => $event->fecha_fin,
+                    'color' => $event->color ?? '#3788d8',
+                ];
+            });
+
+        // Eventos sin fecha
+        $unassignedEvents = Agenda::whereNull('fecha_inicio')
+            ->where('estado', 1)->get();
+
+        return view('admin.agenda.index', compact('events', 'unassignedEvents'));
+    }
+
+
+
+    // Crear evento sin fecha
+    public function store(Request $request)
+    {
+
+        $request->validate(['title' => 'required|string|max:255', 'tipo' => 'string']);
+        $tipo = $request->tipo ?? 'Sin categoría';
+        $colors = ['Taller' => '#3788d8', 'Visita' => '#28a745', 'Llamada' => '#ffc107', 'Sin categoría' => '#6c757d'];
+        $color = $colors[$tipo] ?? '#6c757d';
+        $event =
+            Agenda::create([
+                'titulo' => $request->title,
+                'fecha_inicio' => null,
+                'fecha_fin' => null,
+                // 'color'        => sprintf('#%06X', mt_rand(0, 0xFFFFFF)),
+                'color' => $color,
+                'usuario_id' => Auth::id(),
+            ]);
+        // enviar a Todoist
+      
+        $this->enviarATodoist($event);
+
+
+        return response()->json([
+            'success' => true,
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->titulo,
+                'start' => $event->fecha_inicio,
+                'end' => $event->fecha_fin,
+                'color' => $event->color,
+            ]
+        ]);
+
+
+    }
+
+
+    // Actualizar fecha al mover o arrastrar
+    public function updateDate(Request $request, Agenda $event)
+    {
+        // Solo fecha YYYY-MM-DD
+        $start = $request->start;
+
+        $event->update([
+            'fecha_inicio' => $start,
+        ]);
+        $this->enviarATodoist($event);
+        // $this->enviarATodoistGrupo($titulo,$event);
+        // enviar a Todoist
+
+        return response()->json([
+            'success' => true,
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->titulo,
+                'start' => $start,
+                'color' => $event->color,
+            ]
+        ]);
+
+    }
+    ////////////////////////////////////////////
+public function updateNoAgendado(Request $request, Agenda $event)
+{
+    $event->update($request->only([
+        'titulo',
+        'fecha_inicio',
+        'tipo',
+        'estado'
+    ]));
+
+    return response()->json(['ok' => true]);
+}
+
+
+    ////////////////////////////////////////////
+
+     public function updateDateItem(Request $request, Agenda $event)
+    {
+        // Solo fecha YYYY-MM-DD
+        $start = $request->start;
+        
+
+        $event->update([
+            'fecha_inicio' => $start,
+        ]);
+        // enviar a Todoist
+        $this->enviarATodoist($event);
+
+        return response()->json([
+            'success' => true,
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->titulo,
+                'start' => $start,
+                'color' => $event->color,
+            ]
+        ]);
+
+    }
+
+    // public function updateEstado(Request $request, Agenda $event)
+    // {
+    //     // Solo fecha YYYY-MM-DD
+    //     $start = $request->start;
+    //     $estado = 2;
+
+    //     $event->update([
+    //         'estado' => $estado,
+    //     ]);
+    //     // $this->enviarATodoist($event);
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'event' => [
+    //             'id' => $event->id,
+    //             'title' => $event->titulo,
+    //             'start' => $start,
+    //             'color' => $event->color,
+    //         ]
+    //     ]);
+
+    // }
+
+
+    // private function enviarATodoistGrupo($titulo, $fecha)
+// {
+//     $token = env('TODOIST_TOKEN');
+//     $projectId = env('TODOIST_PROJECT_ID');
+
+    //     // IDs de las 4 personas del grupo
+//     $usuarios = [
+//         env('TODOIST_LD'),
+//         env('TODOIST_KG'),
+//         env('TODOIST_HM'),
+//         env('TODOIST_CL'),
+//     ];
+
+    //     foreach ($usuarios as $usuarioId) {
+//         $response = Http::withToken($token)->post('https://api.todoist.com/rest/v2/tasks', [
+//             'content'       => $titulo,
+//             'project_id'    => $projectId,
+//             'assignee_id'   => $usuarioId,   // asignar al usuario correspondiente
+//             'due_datetime'  => carbon::parse($fecha . ' 16:00')->toIso8601String(), // fecha + hora 16:00
+//             'priority'      => 4,            // prioridad 1 en interfaz = 4 en API
+//         ]);
+
+    //         if ($response->failed()) {
+//             Log::error("Error creando tarea para usuario {$usuarioId}: " . $response->body());
+//         } else {
+//             $tarea = $response->json();
+
+    //             // 📌 Agregar recordatorio a las 10:00 AM
+//             Http::withToken($token)->post("https://api.todoist.com/rest/v2/reminders", [
+//                 "task_id" => $tarea["id"],
+//                 "due_datetime" => carbon::parse($fecha . ' 10:00')->toIso8601String(),
+//                 "type" => "absolute" // recordatorio absoluto
+//             ]);
+//         }
+//     }
+// }
+
+
+    private function enviarATodoist($event)
+    {
+        Log::info("Enviando tarea a Todoist...");
+Log::info("Enviando tarea a Todoist...");
+
+    $token = config('services.todoist.token');
+    $projectId = config('services.todoist.project_id');
+    $usuarios = config('services.todoist.usuarios');
+
+    // Log::info("Token cargado: " . $token); 
+
+
+        if (!$token) {
+            Log::error('Todoist: TOKEN no definido en .env');
+            return;
+        }
+
+        foreach ($usuarios as $usuarioId) {
+            $response = Http::withToken($token)->post('https://api.todoist.com/rest/v2/tasks', [
+                'content' => $event->titulo,
+                'project_id' => $projectId,
+                'assignee_id' => $usuarioId, // ✅ CORRECTO
+                'due_datetime' => Carbon::parse($event->fecha_inicio . ' 9:00')->toIso8601String(),
+                'priority' => 4, // prioridad alta
+            ]);
+
+            if ($response->failed()) {
+                Log::error("❌ Error creando tarea para usuario {$usuarioId}: " . $response->body());
+                continue;
+            }
+
+            $tarea = $response->json();
+            Log::info("✅ Tarea creada en Todoist para usuario {$usuarioId}: " . json_encode($tarea));
+
+            // Agregar recordatorio a las 08:00 AM
+            Http::withToken($token)->post("https://api.todoist.com/rest/v2/reminders", [
+                "task_id" => $tarea["id"],
+                "due_datetime" => Carbon::parse($event->fecha_inicio . ' 08:00')->toIso8601String(),
+                "type" => "absolute"
+            ]);
+
+            // Guardar el primer todoist_id en el evento
+            if (!$event->todoist_id && isset($tarea['id'])) {
+                $event->todoist_id = $tarea['id'];
+                $event->save();
+            }
+        }
+    }
+
+
+    // Eliminar evento
+    public function update(Request $request, $id)
+    {
+        $event = Agenda::findOrFail($id);
+        $event->update($request->all());
+        return response()->json(['ok' => true]);
+    }
+    // public function destroy(Agenda $event)
+    // {
+    //     $event->delete();
+    //     return response()->json(['success' => true]);
+    // }
+
+    public function destroy($id)
+{
+    $evento = Agenda::findOrFail($id); 
+    $evento->delete();
+    return response()->json(['success' => true]);
+}
+
+}
