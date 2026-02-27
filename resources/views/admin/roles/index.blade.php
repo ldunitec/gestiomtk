@@ -13,6 +13,9 @@
                     <h3 class="card-title">Roles registrados</h3>
 
                     <div class="card-tools">
+                        <a href="{{url('admin/usuarios')}}" class="btn btn-success"> Asignar Rol</a>
+                    </div>
+                    <div class="card-tools">
                         <a href="{{url('admin/roles/create')}}" class="btn btn-primary"> Crear nuevo</a>
                     </div>
                     <!-- /.card-tools -->

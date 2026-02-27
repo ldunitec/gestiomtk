@@ -318,6 +318,8 @@ return [
                     'url' => 'admin/configuraciones',
                     'icon' => 'fas fa-fw fa-cogs',
                     'classes' => 'bg-blue text-white',
+                    'can' => 'admin.configuraciones.index',
+                    
                 ],
 
                 [
@@ -351,7 +353,7 @@ return [
 
         [
             'text' => 'RED DE DATOS',
-            'icon' => 'fas fa-cogs',
+            'icon' => 'fas fa-network-wired',
             'submenu' => [
                 [
                     'text' => 'Marcas',
@@ -415,32 +417,59 @@ return [
 
         [
             'text' => 'MIKROTIK',
-            'icon' => 'fas fa-cogs',
+            'icon' => 'fas fa-ethernet',
             'submenu' => [
                 [
                     'text' => 'Autorizar Internet',
                     'url' => 'admin/mikrotik/autorizar',
                     'icon' => 'fas fa-wifi',
-                      'classes' => 'bg-orange text-white',
+                    'classes' => 'bg-orange text-white',
                 ],
                 [
                     'text' => 'cliente Internet',
                     'url' => 'admin/mikrotik/clientes',
                     'icon' => 'fas fa-wifi',
-                      'classes' => 'bg-orange text-white',
+                    'classes' => 'bg-orange text-white',
                 ],
                 [
                     'text' => 'cliente Conectados',
                     'url' => 'admin/mikrotik/conectados',
                     'icon' => 'fas fa-wifi',
-                      'classes' => 'bg-orange text-white',
+                    'classes' => 'bg-orange text-white',
                 ],
 
                 [
                     'text' => 'Diagrama Red',
                     'url' => 'admin/diagramas/red',
                     'icon' => 'fas fa-wifi',
-                      'classes' => 'bg-orange text-white',
+                    'classes' => 'bg-orange text-white',
+                ],
+
+            ],
+        ],
+
+        [
+            'text' => 'BTR',
+            'icon' => 'fas fa-bus',
+            'submenu' => [
+
+                [
+                    'text' => 'BTR',
+                    'url' => 'admin/inventarioBTR/dashboard',
+                    'icon' => 'fas fa-fw fa-user',
+                    'classes' => 'bg-info text-white',
+                ],
+                [
+                    'text' => 'Inventario BTR ',
+                    'url' => 'admin/inventarioBTR',
+                    'icon' => 'fas fa-fw fa-user',
+                    'classes' => 'bg-info text-white',
+                ],
+                [
+                    'text' => 'MAPAS BTR ',
+                    'url' => 'admin/inventarioBTR/mapas_btr',
+                    'icon' => 'fas fa-fw fa-user',
+                    'classes' => 'bg-info text-white',
                 ],
 
             ],
@@ -450,7 +479,7 @@ return [
             'text' => 'Asistencia',
             'url' => 'admin/marcaciones',
             'icon' => 'fas fa-fw fa-clock',
-            // 'classes' => 'bg-blue text-white',
+            'can' => 'admin.marcaciones.index',
         ],
         [
             'text' => 'Agenda Semanal',
@@ -462,13 +491,44 @@ return [
             'text' => 'Drivers y Manuales',
             'icon' => 'fas fa-download',
             'route' => 'admin.brands.index',
+            'can' => 'admin.brands.index',
             // 'classes' => 'bg-blue text-white',
         ],
 
 
+
+
         [
-            'text' => 'BTR',
-            'url' => 'admin/inventarioBTR',
+            'text' => 'Carnet',
+            'url' => 'admin/idcards',
+            'icon' => 'fas fa-fw fa-user',
+        ],
+
+        [
+            'text' => 'Carnets CR80',
+            'icon' => 'fas fa-id-card',
+            'submenu' => [
+                [
+                    'text' => 'Diseños',
+                    'url' => 'admin/idcards',
+                    'icon' => 'far fa-circle',
+                ],
+                [
+                    'text' => 'Nuevo diseño',
+                    'url' => 'admin/idcards/create',
+                    'icon' => 'far fa-circle',
+                ],
+                [
+                    'text' => 'Historial de impresiones',
+                    'url' => 'admin/idcards/history',
+                    'icon' => 'far fa-circle',
+                ],
+            ],
+        ],
+
+        [
+            'text' => 'Viaticos',
+            'url' => 'admin/viaticos',
             'icon' => 'fas fa-fw fa-user',
         ],
         [

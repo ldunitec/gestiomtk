@@ -8,6 +8,7 @@ use RouterOS\Query;
 
 class MikrotikController extends Controller
 {
+
     private function client()
     {
         return new Client([

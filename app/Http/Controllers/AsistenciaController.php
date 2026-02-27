@@ -13,77 +13,194 @@ class AsistenciaController extends Controller
 {
  
 
+// public function index(Request $request)
+// {
+//     $config = ConfigAsistencia::first();
+
+// if (!$config) {
+//     $config = new ConfigAsistencia();
+// }
+//     // $empleados = Empleado::all();
+//      $empleados = Empleado::orderBy('nombres')->get();
+//        $asistencias = [];
+
+//     $query = Asistencia::query();
+
+//     // 🔎 FILTRO POR FECHA
+//     if ($request->filled('desde') && $request->filled('hasta')) {
+//         $query->whereBetween('fecha', [
+//             $request->desde,
+//             $request->hasta
+//         ]);
+//     }
+
+
+//         $registros = Asistencia::with('empleado')
+//             ->select('empleado_id', 'fecha')
+//             ->when($request->desde && $request->hasta, function ($q) use ($request) {
+//                 $q->whereBetween('fecha', [$request->desde, $request->hasta]);
+//             })
+//             ->groupBy('empleado_id', 'fecha')
+//             ->orderBy('fecha')
+//             ->get();
+
+//         $asistencias = [];
+//         $ciclo = ConfigAsistencia::first();
+
+//         foreach ($registros as $r) {
+
+//             $nombreEmpleado = $r->empleado
+//                 ? $r->empleado->nombres . ' ' . $r->empleado->apellidos
+//                 : 'Empleado no registrado';
+
+
+//             // ENTRADA
+//             $entrada = Asistencia::where('empleado_id', $r->empleado_id)
+//                 ->where('fecha', $r->fecha)
+//                 ->whereBetween('hora', [
+//                     $config->entrada_desde,
+//                     $config->entrada_hasta
+//                 ])
+//                 ->min('hora');
+
+
+//             // SALIDA
+//             $salida = Asistencia::where('empleado_id', $r->empleado_id)
+//                 ->where('fecha', $r->fecha)
+//                 ->whereBetween('hora', [
+//                     $config->salida_desde,
+//                     $config->salida_hasta
+//                 ])
+//                 ->max('hora');
+
+//             // ESTADO ENTRADA
+//             $limite = Carbon::parse($config->hora_oficial)
+//                 ->addMinutes($config->minutos_permitidos);
+
+//             if (!$entrada) {
+//                 $estadoEntrada = '❌ Sin entrada';
+//             } elseif ($entrada > $limite->format('H:i:s')) {
+//                 $estadoEntrada = '⏰ Tarde';
+//             } else {
+//                 $estadoEntrada = '✅ A tiempo';
+//             }
+
+
+
+//             // ESTADO SALIDA
+//             $horaSalidaOficial = Carbon::parse($config->hora_salida);
+
+//             if (!$salida) {
+//                 $estadoSalida = '❌ Sin salida';
+//             } elseif ($salida < $horaSalidaOficial->format('H:i:s')) {
+//                 $estadoSalida = '⏰ Salida anticipada';
+//             } else {
+//                 $estadoSalida = '✅ Salida normal';
+//             }
+
+//             // HORAS TRABAJADAS
+//             $horasTrabajadas = null;
+//             if ($entrada && $salida) {
+//                 $horasTrabajadas = Carbon::parse($entrada)
+//                     ->diff(Carbon::parse($salida))
+//                     ->format('%H:%I');
+//             }
+//             $horaLimite = Carbon::parse($config->hora_oficial)
+//                 ->addMinutes($config->minutos_permitidos);
+
+
+//             //TIEMPO TARDE
+//             $tiempoTardeMinutos = 0;
+
+//             if ($entrada) {
+//                 $horaEntrada = Carbon::parse($entrada);
+
+//                 if ($horaEntrada->gt($horaLimite)) {
+//                     $tiempoTardeMinutos = $horaLimite->diffInMinutes($horaEntrada)
+//                         + ($config->minutos_permitidos);
+//                 }
+//             }
+
+
+//             $asistencias[] = [
+//                 'empleado_id' => $r->empleado_id,
+//                 'empleado_nombre' => $nombreEmpleado,
+//                 'fecha' => $r->fecha,
+//                 'entrada' => $entrada,
+//                 'salida' => $salida,
+//                 'hora_limite' => $horaLimite->format('H:i'), // 👈 08:06
+//                 'tiempo_tarde' => $tiempoTardeMinutos,
+//                 'estado_entrada' => $estadoEntrada,
+//                 'estado_salida' => $estadoSalida,
+//                 'horas_trabajadas' => $horasTrabajadas
+//             ];
+
+//         }
+//         $asistencias = [];
+//         return view('admin.marcaciones.index', compact(
+//             'asistencias',
+//             'config',
+//             'ciclo'
+//         ));
+//     } //
+
+
 public function index(Request $request)
 {
-    $config = ConfigAsistencia::first();
-
-if (!$config) {
-    $config = new ConfigAsistencia();
-}
+    $config = ConfigAsistencia::first() ?? new ConfigAsistencia();
     $empleados = Empleado::all();
 
-    $query = Asistencia::query();
+    $query = Asistencia::with('empleado');
 
-    // 🔎 FILTRO POR FECHA
     if ($request->filled('desde') && $request->filled('hasta')) {
-        $query->whereBetween('fecha', [
-            $request->desde,
-            $request->hasta
-        ]);
-    }
+        $query->whereBetween('fecha', [$request->desde, $request->hasta]);
+    }else {
 
+    // 🔥 Por defecto últimos 30 días
+    $query->where('fecha', '>=', now()->subDays(30)->toDateString());
+}
 
-        $registros = Asistencia::with('empleado')
-            ->select('empleado_id', 'fecha')
-            ->when($request->desde && $request->hasta, function ($q) use ($request) {
-                $q->whereBetween('fecha', [$request->desde, $request->hasta]);
-            })
-            ->groupBy('empleado_id', 'fecha')
-            ->orderBy('fecha')
-            ->get();
+    $registros = $query
+        ->orderBy('fecha')
+        ->orderBy('hora')
+        ->get()
+        ->groupBy(['empleado_id', 'fecha']);
 
-        $asistencias = [];
-        $ciclo = ConfigAsistencia::first();
+    $asistencias = [];
+      $ciclo = ConfigAsistencia::first();
 
-        foreach ($registros as $r) {
+    foreach ($registros as $empleadoId => $fechas) {
 
-            $nombreEmpleado = $r->empleado
-                ? $r->empleado->nombres . ' ' . $r->empleado->apellidos
+        foreach ($fechas as $fecha => $marcaciones) {
+
+            $empleado = $marcaciones->first()->empleado;
+
+            $nombreEmpleado = $empleado
+                ? $empleado->nombres . ' ' . $empleado->apellidos
                 : 'Empleado no registrado';
 
-
-            // ENTRADA
-            $entrada = Asistencia::where('empleado_id', $r->empleado_id)
-                ->where('fecha', $r->fecha)
-                ->whereBetween('hora', [
-                    $config->entrada_desde,
-                    $config->entrada_hasta
-                ])
+            // ENTRADA (mínima hora dentro del rango)
+            $entrada = $marcaciones
+                ->whereBetween('hora', [$config->entrada_desde, $config->entrada_hasta])
                 ->min('hora');
 
-
-            // SALIDA
-            $salida = Asistencia::where('empleado_id', $r->empleado_id)
-                ->where('fecha', $r->fecha)
-                ->whereBetween('hora', [
-                    $config->salida_desde,
-                    $config->salida_hasta
-                ])
+            // SALIDA (máxima hora dentro del rango)
+            $salida = $marcaciones
+                ->whereBetween('hora', [$config->salida_desde, $config->salida_hasta])
                 ->max('hora');
 
-            // ESTADO ENTRADA
-            $limite = Carbon::parse($config->hora_oficial)
+            // LIMITE ENTRADA
+            $horaLimite = Carbon::parse($config->hora_oficial)
                 ->addMinutes($config->minutos_permitidos);
 
+            // ESTADO ENTRADA
             if (!$entrada) {
                 $estadoEntrada = '❌ Sin entrada';
-            } elseif ($entrada > $limite->format('H:i:s')) {
+            } elseif ($entrada > $horaLimite->format('H:i:s')) {
                 $estadoEntrada = '⏰ Tarde';
             } else {
                 $estadoEntrada = '✅ A tiempo';
             }
-
-
 
             // ESTADO SALIDA
             $horaSalidaOficial = Carbon::parse($config->hora_salida);
@@ -103,44 +220,39 @@ if (!$config) {
                     ->diff(Carbon::parse($salida))
                     ->format('%H:%I');
             }
-            $horaLimite = Carbon::parse($config->hora_oficial)
-                ->addMinutes($config->minutos_permitidos);
 
-
-            //TIEMPO TARDE
+            // TIEMPO TARDE
             $tiempoTardeMinutos = 0;
-
-            if ($entrada) {
-                $horaEntrada = Carbon::parse($entrada);
-
-                if ($horaEntrada->gt($horaLimite)) {
-                    $tiempoTardeMinutos = $horaLimite->diffInMinutes($horaEntrada)
-                        + ($config->minutos_permitidos);
-                }
+            if ($entrada && Carbon::parse($entrada)->gt($horaLimite)) {
+                $tiempoTardeMinutos = $horaLimite->diffInMinutes($entrada);
             }
 
-
             $asistencias[] = [
-                'empleado_id' => $r->empleado_id,
+                'empleado_id' => $empleadoId,
                 'empleado_nombre' => $nombreEmpleado,
-                'fecha' => $r->fecha,
+                'fecha' => $fecha,
                 'entrada' => $entrada,
                 'salida' => $salida,
-                'hora_limite' => $horaLimite->format('H:i'), // 👈 08:06
+                'hora_limite' => $horaLimite->format('H:i'),
                 'tiempo_tarde' => $tiempoTardeMinutos,
                 'estado_entrada' => $estadoEntrada,
                 'estado_salida' => $estadoSalida,
                 'horas_trabajadas' => $horasTrabajadas
             ];
-
         }
-
-        return view('admin.marcaciones.index', compact(
-            'asistencias',
-            'config',
-            'ciclo'
-        ));
     }
+
+    return view('admin.marcaciones.index', compact(
+        'asistencias',
+        'empleados',
+        'config',
+        'ciclo'
+    ));
+}
+
+
+
+    // impiortar
     public function importar(Request $request)
     {
         $request->validate([

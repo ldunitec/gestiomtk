@@ -1,0 +1,181 @@
+############################################
+# IDENTIDAD
+############################################
+/system identity set name=CORE-RB1100
+
+############################################
+# SEGURIDAD BASICA
+############################################
+/ip service disable telnet
+/ip service disable ftp
+/ip service disable www
+/ip service disable api
+/ip service disable api-ssl
+
+############################################
+# WAN ISP1 + ISP2 (DHCP)
+############################################
+/ip dhcp-client
+add interface=ether1 disabled=no
+add interface=ether3 disabled=no
+
+
+
+/ip pool
+add name=pool10 ranges=192.168.10.10-192.168.10.200
+add name=pool20 ranges=192.168.10.20-192.168.20.200
+add name=pool30 ranges=192.168.10.30-192.168.30.200
+add name=pool40 ranges=192.168.10.40-192.168.40.200
+add name=pool50 ranges=192.168.10.50-192.168.50.200
+add name=pool60 ranges=192.168.10.60-192.168.60.200
+add name=pool70 ranges=192.168.10.70-192.168.70.200
+add name=pool80 ranges=192.168.10.80-192.168.80.200
+add name=pool90 ranges=192.168.10.90-192.168.90.200
+
+/ip dhcp-server
+add name=dhcp10 interface=vlan10 address-pool=pool10 disabled=no
+add name=dhcp20 interface=vlan20 address-pool=pool20 disabled=no
+add name=dhcp30 interface=vlan30 address-pool=pool30 disabled=no
+add name=dhcp40 interface=vlan40 address-pool=pool40 disabled=no
+add name=dhcp50 interface=vlan50 address-pool=pool50 disabled=no
+add name=dhcp60 interface=vlan60 address-pool=pool60 disabled=no
+add name=dhcp70 interface=vlan70 address-pool=pool70 disabled=no
+add name=dhcp80 interface=vlan80 address-pool=pool80 disabled=no
+add name=dhcp90 interface=vlan90 address-pool=pool90 disabled=no
+
+/ip dhcp-server network
+add address=192.168.10.0/24 gateway=192.168.10.1 dns-server=8.8.8.8
+add address=192.168.20.0/24 gateway=192.168.20.1 dns-server=8.8.8.8
+add address=192.168.30.0/24 gateway=192.168.30.1 dns-server=8.8.8.8
+add address=192.168.40.0/24 gateway=192.168.40.1 dns-server=8.8.8.8
+add address=192.168.50.0/24 gateway=192.168.50.1 dns-server=8.8.8.8
+add address=192.168.60.0/24 gateway=192.168.60.1 dns-server=8.8.8.8
+add address=192.168.70.0/24 gateway=192.168.70.1 dns-server=8.8.8.8
+add address=192.168.80.0/24 gateway=192.168.80.1 dns-server=8.8.8.8
+add address=192.168.90.0/24 gateway=192.168.90.1 dns-server=8.8.8.8
+
+
+
+############################################
+# FAILOVER AUTOMATICO
+############################################
+/ip route
+add dst-address=0.0.0.0/0 gateway=ether1 distance=1 check-gateway=ping
+add dst-address=0.0.0.0/0 gateway=ether3 distance=2
+
+############################################
+# BRIDGE PRINCIPAL
+############################################
+/interface bridge
+add name=bridge-LAN vlan-filtering=yes
+
+/interface bridge port
+add bridge=bridge-LAN interface=ether2
+
+############################################
+# CREACION VLANs
+############################################
+/interface vlan
+add interface=bridge-LAN name=vlan10 vlan-id=10
+add interface=bridge-LAN name=vlan20 vlan-id=20
+add interface=bridge-LAN name=vlan30 vlan-id=30
+add interface=bridge-LAN name=vlan40 vlan-id=40
+add interface=bridge-LAN name=vlan50 vlan-id=50
+add interface=bridge-LAN name=vlan60 vlan-id=60
+add interface=bridge-LAN name=vlan70 vlan-id=70
+add interface=bridge-LAN name=vlan80 vlan-id=80
+add interface=bridge-LAN name=vlan90 vlan-id=90
+add interface=bridge-LAN name=vlan99 vlan-id=99
+add interface=bridge-LAN name=vlan100 vlan-id=100
+
+############################################
+# DIRECCIONES IP
+############################################
+/ip address
+add address=192.168.10.1/24 interface=vlan10
+add address=192.168.20.1/24 interface=vlan20
+add address=192.168.30.1/24 interface=vlan30
+add address=192.168.40.1/24 interface=vlan40
+add address=192.168.50.1/24 interface=vlan50
+add address=192.168.60.1/24 interface=vlan60
+add address=192.168.70.1/24 interface=vlan70
+add address=192.168.80.1/24 interface=vlan80
+add address=192.168.90.1/24 interface=vlan90
+add address=192.168.99.1/24 interface=vlan99
+add address=192.168.100.1/24 interface=vlan100
+
+############################################
+# DHCP SOLO PARA WIFI Y VISITANTES
+############################################
+/ip pool
+add name=pool90 ranges=192.168.90.10-192.168.90.200
+add name=pool100 ranges=192.168.100.10-192.168.100.200
+
+/ip dhcp-server
+add name=dhcp90 interface=vlan90 address-pool=pool90 disabled=no
+add name=dhcp100 interface=vlan100 address-pool=pool100 disabled=no
+
+/ip dhcp-server network
+add address=192.168.90.0/24 gateway=192.168.90.1 dns-server=8.8.8.8
+add address=192.168.100.0/24 gateway=192.168.100.1 dns-server=1.1.1.3
+
+############################################
+# NAT INTERNET
+############################################
+/ip firewall nat
+add chain=srcnat out-interface=ether1 action=masquerade
+add chain=srcnat out-interface=ether3 action=masquerade
+
+############################################
+# FIREWALL BASICO
+############################################
+/ip firewall filter
+add chain=input connection-state=established,related action=accept
+add chain=input connection-state=invalid action=drop
+add chain=input in-interface=ether1 action=drop
+add chain=input in-interface=ether3 action=drop
+
+############################################
+# AISLAMIENTO VISITANTES
+############################################
+add chain=forward src-address=192.168.100.0/24 dst-address=192.168.0.0/16 action=drop
+
+############################################
+# BLOQUEO INTERNET CCTV
+############################################
+add chain=forward src-address=192.168.80.0/24 out-interface=ether1 action=drop
+
+############################################
+# QoS
+############################################
+/queue simple
+add name=VOIP target=192.168.70.0/24 priority=1/1 max-limit=50M/50M
+add name=VISITANTES target=192.168.100.0/24 max-limit=20M/20M
+
+############################################
+# HOTSPOT VISITANTES
+############################################
+/ip hotspot profile
+add name=hotspot100 hotspot-address=192.168.100.1 dns-name=wifi.local
+
+/ip hotspot
+add name=hotspot100 interface=vlan100 address-pool=pool100 profile=hotspot100
+
+############################################
+# DNS SEGURO (CONTROL PARENTAL)
+############################################
+/ip dns
+set servers=1.1.1.3 allow-remote-requests=yes
+
+############################################
+# BLOQUEO TORRENT
+############################################
+/ip firewall filter
+add chain=forward protocol=tcp p2p=all-p2p action=drop
+add chain=forward protocol=tcp dst-port=6881-6999 action=drop
+
+############################################
+# PROTECCION ANTI ATAQUES
+############################################
+add chain=input protocol=tcp tcp-flags=syn connection-limit=30,32 action=drop
+add chain=input protocol=tcp psd=21,3s,3,1 action=drop

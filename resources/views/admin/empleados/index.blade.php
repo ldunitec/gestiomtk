@@ -1,270 +1,358 @@
 @extends('adminlte::page')
 
-@section('content_header')
-    <h1><b>Listado de empleados </b></h1>
-    <hr>
-@stop
+@section('title', 'Empleados')
 
 @section('content')
+    <div class="card">
+        <div class="card-header">
+            <button class="btn btn-primary" id="btnCrear">
+                <i class="fas fa-plus"></i> Nuevo Empleado
+            </button>
+        </div>
 
-    <div class="row">
-        <div class="col-12 col-md-12">
-            <div class="card card-outline card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">empleados registrados</h3>
+        <a href="https://wa.me/50432132859?text={{ urlencode('Hola, su pago está pendiente') }}" target="_blank"
+            class="btn btn-success">
+            <i class="fab fa-whatsapp"></i> Enviar WhatsApp
+        </a>
 
-                    <div class="card-tools">
-                        <!-- Botón para abrir el modal -->
-                        <button type="button" class="btn btn-primary btn-sm" data-toggle="modal"
-                            data-target="#crearEmpleadoModal">
-                            Nuevo empleado
-                        </button>
-                    </div>
-                    <!-- /.card-tools -->
-                </div>
-                <!-- /.card-header -->
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table id="example1" class="table table-bordered table-hover table-striped table-sm">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: center">Nro</th>
-                                    <th style="text-align: center">Departamento</th>
-                                    <th style="text-align: center">Nombres</th>
-                                    <th style="text-align: center">Apellidos</th>
-                                    <th style="text-align: center">dni</th>
-                                    <th style="text-align: center">Email</th>
-                                    <th style="text-align: center">Fecha Nacimiento</th>
-                                    <th style="text-align: center">Telefono</th>
-                                    <th style="text-align: center">Reloj</th>
-                                    <th style="text-align: center">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $contador = 1;
-                                @endphp
-                                @foreach ($empleados as $empleado)
-                                    <tr @class([
-                                        'bg-danger text-white' => $empleado->estado === 'Inactivo',
-                                    ])>
-                                        <td style="text-align: center">{{ $contador++ }}</td>
-                                        <td>{{ $empleado->departamento->nombre }}</td>
-                                        <td>{{ $empleado->nombres }}</td>
-                                        <td>{{ $empleado->apellidos }}</td>
-                                        <td>{{ $empleado->dni }}</td>
-                                        <td>{{ $empleado->usuario->email }}</td>
-                                        <td>{{ $empleado->fecha_nacimiento }}</td>
-                                        <td>{{ $empleado->telefono }}</td>
-                                        <td>{{ $empleado->reloj }}</td>
-                                        <td style="text-align: center">
-                                            <div class="btn-group" role="group" aria-label="Basic example">
-                                                <a href="{{ url('/admin/empleados/' . $empleado->id . '/edit') }}"
-                                                    class="btn btn-success btn-sm"><i class="fas fa-pencil-alt"></i></a>
-                                                <form action="{{ url('/admin/empleados', $empleado->id) }}" method="post"
-                                                    onclick="preguntar{{ $empleado->id }}(event)"
-                                                    id="miFormulario{{ $empleado->id }}">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger btn-sm"><i
-                                                            class="fas fa-trash"></i></button>
-                                                </form>
-
-
-                                                @include('admin.empleados.parciales.modal');
-                                                <!-- Modal edit -->
-                                                {{-- <div class="modal fade" id="editEmpleadoModal" tabindex="-1" role="dialog"
-                                                aria-labelledby="editEmpleadoModalLabel" aria-hidden="true">
-                                                <div class="modal-dialog" role="document">
-                                                    <form action="{{ url('admin/empleados') . '/' . $empleado->id }}"
-                                                        method="POST">
-                                                        @csrf
-                                                        @method('PUT');
-                                                        <div class="modal-content">
-                                                            <div class="modal-header bg-primary">
-                                                                <h5 class="modal-title" id="crearempleadoModalLabel">Agregar
-                                                                    Nueva empleado</h5>
-                                                                    <button type="button" class="close" data-dismiss="modal"
-                                                                    aria-label="Cerrar">
-                                                                    <span aria-hidden="true">&times;</span>
-                                                                </button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <div class="form-group">
-                                                                    <label for="nombre">Nombre de la empleado</label>
-                                                                    <input type="text" class="form-control"
-                                                                        name="nombre"
-                                                                        value="{{ old('nombres', $empleado->nombres) }}"
-                                                                        required>
-                                                                </div>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary"
-                                                                    data-dismiss="modal">Cancelar</button>
-                                                                    <button type="submit"
-                                                                    class="btn btn-primary">Guardar</button>
-                                                                </div>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div> --}}
-                                                <script>
-                                                    function preguntar{{ $empleado->id }}(event) {
-                                                        event.preventDefault();
-                                                        Swal.fire({
-                                                            title: '¿Desea eliminar esta registro?',
-                                                            text: '',
-                                                            icon: 'question',
-                                                            showDenyButton: true,
-                                                            confirmButtonText: 'Eliminar',
-                                                            confirmButtonColor: '#a5161d',
-                                                            denyButtonColor: '#270a0a',
-                                                            denyButtonText: 'Cancelar',
-                                                        }).then((result) => {
-                                                            if (result.isConfirmed) {
-                                                                var form = $('#miFormulario{{ $empleado->id }}');
-                                                                form.submit();
-                                                            }
-                                                        });
-                                                    }
-                                                </script>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <!-- /.card-body -->
-            </div>
-            <!-- /.card -->
+        <div class="card-body">
+            <table class="table table-bordered table-striped" id="tablaEmpleados">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>DNI</th>
+                        <th>Teléfono</th>
+                        <th>Departamento</th>
+                        <th>Estado</th>
+                        <th width="100px">Acciones</th>
+                    </tr>
+                </thead>
+            </table>
         </div>
     </div>
 
-    {{-- MODAL  --}}
 
+    {{-- modal --}}
+    <div class="modal fade" id="modalEmpleado" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
 
-    <!-- Modal create -->
+                <!-- Header -->
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title"></h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
 
+                <!-- Body -->
+                <div class="modal-body">
+                    <form id="formEmpleado">
+                        @csrf
+                        <input type="hidden" name="id" id="empleado_id">
 
+                        <div class="row">
+
+                            <div class="col-md-6">
+                                <label>Nombre</label>
+                                <input type="text" class="form-control" name="nombres" id="nombres" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label>Apellido</label>
+                                <input type="text" class="form-control" name="apellidos" id="apellidos" required>
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Email</label>
+                                <input type="email" class="form-control" name="email" id="email" required>
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>DNI</label>
+                                <input type="text" class="form-control" name="dni" id="dni" required>
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Fecha de nacimiento</label>
+                                <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control">
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Teléfono</label>
+                                <input type="text" class="form-control" name="telefono" id="telefono" required>
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Departamento</label>
+                                <select name="departamento_id" id="departamento_id" class="form-control">
+                                    @foreach ($departamentos as $departamento)
+                                        <option value="{{ $departamento->id }}">
+                                            {{ $departamento->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Código de reloj</label>
+                                <input type="text" class="form-control" name="reloj" id="reloj">
+                            </div>
+
+                            <div class="col-md-6 mt-2">
+                                <label>Estado</label>
+                                <select name="estado" id="estado" class="form-control">
+                                    <option value="Activo">Activo</option>
+                                    <option value="Inactivo">Inactivo</option>
+                                </select>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" form="formEmpleado" class="btn btn-success">
+                        Guardar
+                    </button>
+                </div>
+
+            </div>
+        </div>
     </div>
-    </div>
-
-
-@stop
-
-@section('css')
-    <style>
-        /* Fondo transparente y sin borde en el contenedor */
-        #example1_wrapper .dt-buttons {
-            background-color: transparent;
-            box-shadow: none;
-            border: none;
-            display: flex;
-            justify-content: center;
-            /* Centrar los botones */
-            gap: 10px;
-            /* Espaciado entre botones */
-            margin-bottom: 15px;
-            /* Separar botones de la tabla */
-        }
-
-        /* Estilo personalizado para los botones */
-        #example1_wrapper .btn {
-            color: #fff;
-            /* Color del texto en blanco */
-            border-radius: 4px;
-            /* Bordes redondeados */
-            padding: 5px 15px;
-            /* Espaciado interno */
-            font-size: 14px;
-            /* Tamaño de fuente */
-        }
-
-        /* Colores por tipo de botón */
-        .btn-danger {
-            background-color: #dc3545;
-            border: none;
-        }
-
-        .btn-success {
-            background-color: #28a745;
-            border: none;
-        }
-
-        .btn-info {
-            background-color: #17a2b8;
-            border: none;
-        }
-
-        .btn-warning {
-            background-color: #ffc107;
-            color: #212529;
-            border: none;
-        }
-
-        .btn-default {
-            background-color: #6e7176;
-            color: #212529;
-            border: none;
-        }
-    </style>
 @stop
 
 @section('js')
     <script>
+        let tabla;
+
         $(function() {
-            $("#example1").DataTable({
-                "pageLength": 10,
-                "language": {
-                    "emptyTable": "No hay información",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ empleados",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 empleados",
-                    "infoFiltered": "(Filtrado de _MAX_ total empleados)",
-                    "lengthMenu": "Mostrar _MENU_ empleados",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscador:",
-                    "zeroRecords": "Sin resultados encontrados",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
+
+            tabla = $("#tablaEmpleados").DataTable({
+                pageLength: 5,
+                language: {
+                    emptyTable: "No hay información",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ empleados",
+                    infoEmpty: "Mostrando 0 a 0 de 0 empleados",
+                    infoFiltered: "(Filtrado de _MAX_ total empleados)",
+                    lengthMenu: "Mostrar _MENU_ empleados",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscador:",
+                    zeroRecords: "Sin resultados encontrados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
                     }
                 },
-                "responsive": false,
-                "scrollX": true,
-                "lengthChange": true,
-                "autoWidth": false,
-                buttons: [{
-                        text: '<i class="fas fa-copy"></i> COPIAR',
-                        extend: 'copy',
-                        className: 'btn btn-default'
+                responsive: false,
+                scrollX: true,
+                lengthChange: true,
+                autoWidth: false,
+                processing: true,
+                serverSide: true,
+                ajax: "{{ route('admin.empleados.index') }}",
+                columns: [{
+                        data: 'DT_RowIndex',
+                        name: 'DT_RowIndex'
                     },
                     {
-                        text: '<i class="fas fa-file-pdf"></i> PDF',
-                        extend: 'pdf',
-                        className: 'btn btn-danger'
+                        data: 'nombres',
+                        name: 'nombres'
                     },
                     {
-                        text: '<i class="fas fa-file-csv"></i> CSV',
-                        extend: 'csv',
-                        className: 'btn btn-info'
+                        data: 'apellidos',
+                        name: 'apellidos'
                     },
                     {
-                        text: '<i class="fas fa-file-excel"></i> EXCEL',
-                        extend: 'excel',
-                        className: 'btn btn-success'
+                        data: 'dni',
+                        name: 'dni'
                     },
                     {
-                        text: '<i class="fas fa-print"></i> IMPRIMIR',
-                        extend: 'print',
-                        className: 'btn btn-warning'
-                    }
+                        data: 'telefono',
+                        name: 'telefono'
+                    },
+                    {
+                        data: 'departamento',
+                        name: 'departamento.nombre'
+                    },
+                    {
+                        data: 'estado_badge',
+                        name: 'estado'
+                    },
+                    {
+                        data: 'acciones',
+                        name: 'acciones',
+                        orderable: false,
+                        searchable: false
+                    },
                 ]
-            }).buttons().container().appendTo('#example1_wrapper .row:eq(0)');
+            });
+
         });
+
+        // ✅ BOTÓN CREAR
+        $('#btnCrear').click(function() {
+            limpiarFormulario();
+            $('.modal-title').text('Nuevo Empleado');
+            $('#modalEmpleado').modal('show');
+        });
+        // ✅ BOTÓN EDITAR
+        $(document).on('click', '.edit', function() {
+            limpiarFormulario();
+            $('.modal-title').text('Editar Empleado');
+            $('#modalEmpleado').modal('show');
+
+            let id = $(this).data('id');
+            $.ajax({
+                url: "{{ route('admin.empleados.edit', ':id') }}".replace(':id', id),
+                type: 'GET',
+                success: function(data) {
+                    limpiarFormulario();
+                    // Supongamos que obtienes 'data' desde el edit Ajax
+                    $('#empleado_id').val(data.empleado.id);
+                    $('#nombres').val(data.empleado.nombres);
+                    $('#apellidos').val(data.empleado.apellidos);
+                    $('#dni').val(data.empleado.dni);
+                    $('#telefono').val(data.empleado.telefono);
+                    $('#fecha_nacimiento').val(data.empleado.fecha_nacimiento);
+                    $('#departamento_id').val(data.empleado.departamento_id);
+                    $('#reloj').val(data.empleado.reloj);
+                    $('#estado').val(data.empleado.estado);
+
+                    // 🔹 Usuario vinculado
+                    $('#email').val(data.empleado.usuario.email);
+                    $('#usuario_id').val(data.empleado.usuario
+                        .id); // si tienes input hidden para usuario
+
+                    $('#modalEmpleado').modal('show');
+                    console.log(url);
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo cargar el empleado'
+                    });
+                }
+            });
+
+
+
+        });
+        // $(document).on('click', '.edit', function() {}
+        // ✅ GUARDAR (CREAR / EDITAR)
+        $('#formEmpleado').submit(function(e) {
+            e.preventDefault();
+
+            let id = $('#empleado_id').val();
+            let url = id ?
+                "{{ route('admin.empleados.update', ':id') }}".replace(':id', id) :
+                "{{ route('admin.empleados.store') }}";
+
+            let method = id ? 'PUT' : 'POST';
+            $.ajax({
+                url: url,
+                type: method,
+                data: $(this).serialize(),
+
+                success: function(response) {
+                    $('#modalEmpleado').modal('hide');
+                    tabla.ajax.reload();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Correcto!',
+                        text: id ? 'Empleado actualizado correctamente' :
+                            'Empleado creado correctamente',
+                        showConfirmButton: false,
+                        timer: 1800
+                    });
+
+                },
+
+                error: function(xhr) {
+
+                    $('.text-danger').text('');
+
+                    if (xhr.status === 422) {
+                        let errors = xhr.responseJSON.errors;
+
+                        $.each(errors, function(key, value) {
+                            $('.error-' + key).text(value[0]);
+                        });
+
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Errores de validación',
+                            text: 'Revisa los campos obligatorios'
+                        });
+
+                    } else {
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ocurrió un problema en el servidor'
+                        });
+
+                    }
+                }
+            });
+        });
+
+
+        // ✅ CONFIRMAR ELIMINAR (SI TIENES BOTÓN DELETE)
+        $(document).on('click', '.delete', function() {
+
+            let id = $(this).data('id');
+
+            Swal.fire({
+                title: '¿Eliminar empleado?',
+                text: "Esta acción no se puede revertir",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+
+                    $.ajax({
+                        url: `/empleados/${id}`,
+                        type: 'DELETE',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function() {
+                            tabla.ajax.reload();
+
+                            Swal.fire(
+                                'Eliminado!',
+                                'El empleado fue eliminado.',
+                                'success'
+                            );
+                        }
+                    });
+
+                }
+            });
+        });
+
+        function limpiarFormulario() {
+            $('#formEmpleado')[0].reset();
+            $('#empleado_id').val('');
+            $('.text-danger').text('');
+        }
     </script>
 @stop

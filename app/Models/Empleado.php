@@ -9,7 +9,7 @@ class Empleado extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombres','apellidos','dni', 'telefono', 'reloj','fecha_nacimiento','estado', 'departamento_id'];
+    protected $fillable = ['nombres','apellidos','dni', 'telefono', 'reloj','fecha_nacimiento','estado', 'departamento_id','usuario_id'];
 
     public function departamento()
     {
@@ -21,5 +21,9 @@ class Empleado extends Model
     }
     public function equipos(){
         return $this->hasMany(Equipo::class , );
+    }
+      public function asistencias()
+    {
+        return $this->hasMany(Asistencia::class);
     }
 }

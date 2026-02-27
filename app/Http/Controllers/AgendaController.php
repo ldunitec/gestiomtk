@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Agenda;
+use App\Models\Marcacion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use GuzzleHttp\Client;
@@ -27,13 +28,15 @@ class AgendaController extends Controller
                     'title' => $event->titulo,
                     'start' => $event->fecha_inicio,
                     'end' => $event->fecha_fin,
-                    'color' => $event->color ?? '#3788d8',
+                    'color' => $event->estado == 0 ? 'red' : $event->color,
                 ];
             });
 
         // Eventos sin fecha
         $unassignedEvents = Agenda::whereNull('fecha_inicio')
             ->where('estado', 1)->get();
+
+
 
         return view('admin.agenda.index', compact('events', 'unassignedEvents'));
     }
@@ -56,12 +59,15 @@ class AgendaController extends Controller
                 'color' => $color,
                 'usuario_id' => Auth::id(),
             ]);
+            
         // enviar a Todoist
-        $this->enviarATodoist($event);
+        // $this->enviarATodoist($event);
 
 
         return response()->json([
             'success' => true,
+            'icono' => 'success',
+            'message' => 'Tarea creada correctamente',
             'event' => [
                 'id' => $event->id,
                 'title' => $event->titulo,
@@ -100,11 +106,11 @@ class AgendaController extends Controller
 
     }
 
-     public function updateDateItem(Request $request, Agenda $event)
+    public function updateDateItem(Request $request, Agenda $event)
     {
         // Solo fecha YYYY-MM-DD
         $start = $request->start;
-        
+
 
         $event->update([
             'fecha_inicio' => $start,
@@ -124,20 +130,14 @@ class AgendaController extends Controller
 
     }
 
- 
-
 
     private function enviarATodoist($event)
     {
         Log::info("Enviando tarea a Todoist...");
-Log::info("Enviando tarea a Todoist...");
 
-    $token = config('services.todoist.token');
-    $projectId = config('services.todoist.project_id');
-    $usuarios = config('services.todoist.usuarios');
-
-    // Log::info("Token cargado: " . $token); 
-
+        $token = config('services.todoist.token');
+        $projectId = config('services.todoist.project_id');
+        $usuarios = config('services.todoist.usuarios');
 
         if (!$token) {
             Log::error('Todoist: TOKEN no definido en .env');
@@ -145,13 +145,19 @@ Log::info("Enviando tarea a Todoist...");
         }
 
         foreach ($usuarios as $usuarioId) {
-            $response = Http::withToken($token)->post('https://api.todoist.com/rest/v2/tasks', [
-                'content' => $event->titulo,
-                'project_id' => $projectId,
-                'assignee_id' => $usuarioId, // ✅ CORRECTO
-                'due_datetime' => Carbon::parse($event->fecha_inicio . ' 10:00')->toIso8601String(),
-                'priority' => 4, // prioridad alta
-            ]);
+
+            $response = Http::withToken($token)
+                ->post('https://api.todoist.com/api/v2/tasks', [
+                    'content' => $event->titulo,
+                    'project_id' => $projectId,
+                    'assignee_id' => $usuarioId,
+                    'due_datetime' => Carbon::parse($event->fecha_inicio . ' 08:00')->toIso8601String(),
+                    'priority' => 4,
+                ]);
+
+            Log::info('STATUS: ' . $response->status());
+            Log::info('BODY: ' . $response->body());
+
 
             if ($response->failed()) {
                 Log::error("❌ Error creando tarea para usuario {$usuarioId}: " . $response->body());
@@ -161,20 +167,25 @@ Log::info("Enviando tarea a Todoist...");
             $tarea = $response->json();
             Log::info("✅ Tarea creada en Todoist para usuario {$usuarioId}: " . json_encode($tarea));
 
-            // Agregar recordatorio a las 08:00 AM
-            Http::withToken($token)->post("https://api.todoist.com/rest/v2/reminders", [
-                "task_id" => $tarea["id"],
-                "due_datetime" => Carbon::parse($event->fecha_inicio . ' 08:00')->toIso8601String(),
-                "type" => "absolute"
-            ]);
-
-            // Guardar el primer todoist_id en el evento
             if (!$event->todoist_id && isset($tarea['id'])) {
                 $event->todoist_id = $tarea['id'];
                 $event->save();
             }
-            // log('Envio a:'+$event->todoist_id );
         }
+    }
+
+    public function updateEstado(Request $request, $id)
+    {
+        $evento = Agenda::findOrFail($id);
+
+        $evento->titulo = $request->titulo;
+        $evento->tipo = $request->tipo;
+        $evento->estado = $request->estado; // 👈 importante
+        $evento->save();
+
+        return response()->json([
+            'event' => $evento
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -182,13 +193,14 @@ Log::info("Enviando tarea a Todoist...");
         $event = Agenda::findOrFail($id);
         $event->update($request->all());
         return response()->json(['ok' => true]);
-        }
-        
-            // Eliminar evento
+    }
+
+    // Eliminar evento
     public function destroy(Agenda $event)
     {
         $event->delete();
         return response()->json(['success' => true]);
     }
+     
 
 }

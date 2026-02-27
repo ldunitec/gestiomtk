@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 maatwebsite/excel</title>
+</head>
+<body>
+<h3>🚀 PASO 1 — Instalar paquete</h3>
+<h4>composer require maatwebsite/excel</h4>
+<hr>
+<h3>🚀 PASO 2 — Crear Modelo y Migración</h3>
+<p>php artisan make:model Alumno -m</p>
+<h4>Migracion</h4>
+<textarea name="" id="">public function up()
+{
+    Schema::create('alumnos', function (Blueprint $table) {
+        $table->id();
+        $table->string('curso_q7')->nullable();
+        $table->string('jornada_j7')->nullable();
+        $table->string('curso_f9')->nullable();
+        $table->string('dni')->unique();
+        $table->string('nombres');
+        $table->string('apellidos');
+        $table->string('foto')->nullable();
+        $table->timestamps();
+    });
+}</textarea>
+
+<p>php artisan migrate</p>
+
+<hr>
+<h3>🚀 PASO 3 — Crear Import</h3>
+<p>php artisan make:import AlumnosImport --model=Alumno</p>
+<textarea name="" id="">
+    <?php
+
+namespace App\Imports;
+
+use App\Models\Alumno;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Illuminate\Support\Collection;
+
+class AlumnosImport implements ToCollection
+{
+    public function collection(Collection $rows)
+    {
+        foreach ($rows->skip(12) as $row) { // fila 13 en adelante
+
+            if (!isset($row[6])) continue; // Columna G
+
+            $dni = $this->formatearDNI($row[7] ?? '');
+
+            $nombreSeparado = $this->separarNombre($row[13] ?? '');
+
+            Alumno::updateOrCreate(
+                ['dni' => $dni],
+                [
+                    'curso_q7'   => $row[6] ?? null,
+                    'jornada_j7' => $row[9] ?? null,
+                    'curso_f9'   => $row[5] ?? null,
+                    'nombres'    => $nombreSeparado['nombres'],
+                    'apellidos'  => $nombreSeparado['apellidos'],
+                    'foto'       => $row[25] ?? null,
+                ]
+            );
+        }
+    }
+
+    private function formatearDNI($dni)
+    {
+        $dni = preg_replace('/\D/', '', $dni);
+        $dni = str_pad($dni, 13, '0', STR_PAD_LEFT);
+
+        return substr($dni, 0, 5) . '-' .
+               substr($dni, 5, 4) . '-' .
+               substr($dni, 9, 4);
+    }
+
+    private function separarNombre($nombreCompleto)
+    {
+        $partes = preg_split('/\s+/', trim($nombreCompleto));
+
+        return [
+            'nombres' => implode(' ', array_slice($partes, 0, 2)),
+            'apellidos' => implode(' ', array_slice($partes, 2))
+        ];
+    }
+}
+</textarea>
+<hr>
+<h3>🚀 PASO 4 — Crear Controlador</h3>
+<p>php artisan make:controller AlumnoController</p>
+<textarea name="" id="">
+   <?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Imports\AlumnosImport;
+use Maatwebsite\Excel\Facades\Excel;
+
+class AlumnoController extends Controller
+{
+    public function index()
+    {
+        return view('alumnos.importar');
+    }
+
+    public function importar(Request $request)
+    {
+        $request->validate([
+            'archivo' => 'required|mimes:xlsx,xls'
+        ]);
+
+        Excel::import(new AlumnosImport, $request->file('archivo'));
+
+        return back()->with('success', 'Importación completada');
+    }
+} 
+</textarea>
+<hr>
+<h3>🚀 PASO 5 — Rutas</h3>
+<p>Route::get('alumnos/importar', [AlumnoController::class, 'index'])->name('alumnos.importar');
+    </p><p>
+Route::post('alumnos/importar', [AlumnoController::class, 'importar'])->name('alumnos.importar.store');</p>
+<hr>
+<h3>🚀 PASO 6 — Vista Blade</h3>
+<p>resources/views/alumnos/importar.blade.php</p>
+<textarea name="" id="">
+    @extends('adminlte::page')
+
+@section('content')
+
+<div class="card">
+    <div class="card-header">
+        <h4>Importar Alumnos</h4>
+    </div>
+
+    <div class="card-body">
+
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        <form action="{{ route('alumnos.importar.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+
+            <div class="form-group">
+                <input type="file" name="archivo" class="form-control" required>
+            </div>
+
+            <button class="btn btn-primary">
+                Importar Excel
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+@endsection
+</textarea>
+<hr>
+<h3>🔧 Modelo corregido</h3>
+<textarea name="" id="">
+    <?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Alumno extends Model
+{
+    protected $fillable = [
+        'curso_q7',
+        'jornada_j7',
+        'curso_f9',
+        'dni',
+        'nombres',
+        'apellidos',
+        'foto'
+    ];
+}
+</textarea>
+<p></p>
+<hr>
+<h3></h3>
+<p></p>
+<hr>
+<h3></h3>
+<p></p>
+<hr>
+<h3></h3>
+<p></p>
+
+    
+</body>
+</html>

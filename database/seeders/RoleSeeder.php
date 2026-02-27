@@ -159,6 +159,11 @@ class RoleSeeder extends Seeder
             'admin.notas.edit',
             'admin.notas.update',
             'admin.notas.destroy',
+            'admin.inventarioBTR.index',
+            'admin.inventarioBTR.mapas_btr',
+            'admin.inventarioBTR.store',
+            'admin.inventarioBTR.update',
+            'admin.inventarioBTR.dashboard',
 
 
         ];

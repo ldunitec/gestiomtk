@@ -1,0 +1,66 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+#lienzo {
+  position: relative;
+  width: 900px;
+  height: 600px;
+  border: 1px solid #999;
+  margin-top: 10px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.senal {
+  position: absolute;
+  width: 70px;
+  user-select: none;
+  touch-action: none;
+}
+
+.senal svg {
+  width: 100%;
+  height: auto;
+  transform-origin: center center;
+  display: block;
+}
+
+.etiqueta {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 10px;
+  white-space: nowrap;
+  cursor: move;
+  outline: none;
+  touch-action: none;
+}
+
+.etiqueta::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid;
+}
+
+/* COLORES */
+.fd svg { fill: rgba(28,230,31,0.85); }
+.fd .etiqueta { background: rgba(28,230,31,0.85); }
+.fd .etiqueta::after { border-top-color: rgba(28,230,31,0.85); }
+
+.ff svg { fill: rgba(28,99,230,0.85); }
+.ff .etiqueta { background: rgba(28,99,230,0.85); color: #fff; }
+.ff .etiqueta::after { border-top-color: rgba(28,99,230,0.85); }
+
+.fp svg { fill: rgba(244,146,0,0.85); }
+.fp .etiqueta { background: rgba(244,146,0,0.85); }
+.fp .etiqueta::after { border-top-color: rgba(244,146,0,0.85); }

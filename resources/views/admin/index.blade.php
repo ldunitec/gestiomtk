@@ -51,6 +51,7 @@
                 <!-- /.info-box -->
             </a>
         </div>
+
         <div class="col-md-3 col-sm-6 col-12">
             <a href="{{ url('admin/marcaciones') }}">
                 <div class="info-box zoomp">
@@ -58,6 +59,20 @@
                     <div class="info-box-content">
                         <span class="info-box-text"><b>Asistencia</b></span>
                         <span class="info-box-number">{{ $total_administrativo }} </span>
+                    </div>
+                    <!-- /.info-box-content -->
+                </div>
+                <!-- /.info-box -->
+            </a>
+        </div>
+
+        <div class="col-md-3 col-sm-6 col-12">
+            <a href="{{ url('admin/inventarioBTR') }}">
+                <div class="info-box zoomp">
+                    <img src="{{ url('/img/btr.gif') }}" width="70px" alt="">
+                    <div class="info-box-content">
+                        <span class="info-box-text"><b>BTR</b></span>
+                        {{-- <span class="info-box-number">{{ $total_administrativo }} </span> --}}
                     </div>
                     <!-- /.info-box-content -->
                 </div>

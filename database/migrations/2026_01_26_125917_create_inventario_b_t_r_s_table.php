@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -17,15 +16,17 @@ return new class extends Migration
             $table->string('ip');
             $table->string('fases');
             $table->string('rc');
-            $table->enum('fibra',['Si','No'])->default('No');
+            $table->enum('fibra', ['Si', 'No'])->default('No');
             $table->string('camaras');
-            $table->enum('ping',['Si','No'])->default('No');
-            $table->enum('fuente',['Si','No'])->default('No');
-            $table->enum('switchPoE',['Si','No'])->default('No');
-            $table->enum('xcom',['Si','No'])->default('No');
-            $table->enum('sg116',['Si','No'])->default('No');
-            $table->string('observaciones',255)->nullable();
-            $table->string('imagen',255)->nullable();
+            $table->enum('ping', ['Si', 'No'])->default('No');
+            $table->integer('fuente')->default(0);
+            $table->integer('fuente', )->default(0);
+            $table->integer('switchPoE', )->default(0);
+            $table->integer('xcom', )->default(0);
+            $table->integer('sg116', )->default(0);
+            $table->string('observaciones', 255)->nullable();
+            $table->string('imagen', 255)->nullable();
+            $table->longText('lienzo_json')->nullable();
             $table->timestamps();
         });
     }

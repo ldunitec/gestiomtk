@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Roku Básico</title>
+<style>
+body { font-family: Arial; text-align:center; margin-top:50px; }
+button { padding:10px 20px; margin:5px; font-size:16px; cursor:pointer; }
+h2 { margin-bottom:30px; }
+</style>
+</head>
+<body>
+
+<h2>Control Roku Básico</h2>
+
+<p>Haz clic en una app para abrirla en tu Roku</p>
+
+<!-- Reemplaza IP y APP_ID según tu Roku y apps instaladas -->
+<div>
+    <button onclick="launchApp(12)">Netflix</button>
+    <button onclick="launchApp(837)">YouTube</button>
+    <button onclick="launchApp(14)">Hulu</button>
+</div>
+
+<script>
+const ROKU_IP = '172.20.10.2'; // Cambia por la IP de tu Roku
+
+function launchApp(appId) {
+    // Creamos un enlace temporal para enviar POST usando fetch
+    fetch(`http://${ROKU_IP}:8060/launch/${appId}`, { method: 'POST' })
+        .then(() => alert('Comando enviado a Roku'))
+        .catch(() => alert('No se pudo conectar. Asegúrate que la Roku está en la misma red.'));
+}
+</script>
+
+</body>
+</html>

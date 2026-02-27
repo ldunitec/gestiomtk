@@ -13,7 +13,7 @@
 @section('content')
     <div class="text-center">
         <i></i>
-        <img src="{{url('/img/logo_mega.png')}}" alt="" style="margin: 100px">
+<img src="https://www.megatk.net/web/image/297044-e78e8e78/logo%20mega.png" alt="Logo Mega" style="margin: 80px;">
         <h3>Esta tratando de acceder a una pagina no autorizada</h3>
         <p>por favor, contacta al administrador para recibir ayuda</p>
        <a href="{{ url()->previous() }}" class="btn btn-primary">Regresar</a>

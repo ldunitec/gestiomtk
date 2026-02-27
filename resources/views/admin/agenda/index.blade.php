@@ -20,7 +20,8 @@
                 @foreach ($unassignedEvents as $evento)
                     <div class="external-event rounded p-2 mb-2 text-white"
                         style="background: {{ $evento->color }}; cursor:grab;" data-id="{{ $evento->id }}"
-                        data-titulo="{{ $evento->titulo }}" data-tipo="{{ $evento->tipo ?? 'Llamada' }}">
+                        data-titulo="{{ $evento->titulo }}" data-tipo="{{ $evento->tipo ?? 'Llamada' }}"
+                        data-estado="{{ $evento->estado }}">
                         {{ $evento->id }} // {{ $evento->titulo }}
                     </div>
                 @endforeach
@@ -132,46 +133,6 @@
 
 
 
-
-            {{-- card nuevo 
-            <div class="card card-outline card-danger">
-                <div class="card-header">
-                    <h3 class="card-title">Nueva Actividad</h3>
-                </div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <label for="nombre">Nombre</label>
-                        <input type="text" id="evt-nombre" class="form-control mb-2" placeholder="Nombre">
-                    </div>
-                    <div class="form-group">
-                        <label for="contacto">Contacto</label>
-                        <input type="text" id="evt-contacto" class="form-control mb-2" placeholder="Contacto">
-                    </div>
-                    <div class="form-group">
-                        <label for="telefono">Telefono</label>
-                        <input type="text" id="evt-telefono" class="form-control mb-2" placeholder="Teléfono">
-                    </div>
-                    <div class="form-group">
-                        <label for="servicio">Servico solicitado</label>
-                        <input type="text" id="evt-servicio" class="form-control mb-2" placeholder="Servicio">
-                    </div>
-                    <div class="form-group">
-                        <label for="tipo">Tipo de actividad</label>
-                        <select id="new-event-type" class="form-control mt-2">
-                            <option value="Interno">Interno</option>
-                            <option value="Taller">Taller</option>
-                            <option value="Visita">Visita</option>
-                            <option value="Llamada" selected>Llamada</option>
-                        </select>
-                    </div>
-                    <hr>
-                    <button id="add-event-btn" class="btn btn-primary">
-                        Guardar
-                    </button>
-                </div>
-                <!-- /.card-body -->
-            </div> --}}
-
         </div>
 
         <div class="col-md-9">
@@ -179,53 +140,14 @@
         </div>
     </div>
 
-    <!-- Modal para editar/eliminar evento -->
-    {{-- <div class="modal fade" id="eventoModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      
-      <div class="modal-header">
-        <h5 class="modal-title">Editar Evento</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
 
-      <div class="modal-body">
-        <form id="formEvento">
-          @csrf
-          <input type="hidden" id="event_id" name="id">
-          
-          <div class="mb-3">
-            <label for="title" class="form-label">Título</label>
-            <input type="text" class="form-control" id="title" name="title">
-          </div>
-          
-          <div class="mb-3">
-            <label for="start" class="form-label">Inicio</label>
-            <input type="datetime-local" class="form-control" id="start" name="start">
-          </div>
-          
-          <div class="mb-3">
-            <label for="end" class="form-label">Fin</label>
-            <input type="datetime-local" class="form-control" id="end" name="end">
-          </div>
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" id="btnEliminar" class="btn btn-danger">Eliminar</button>
-        <button type="button" id="btnGuardar" class="btn btn-success">Guardar</button>
-      </div>
-
-    </div>
-  </div>
-</div> --}}
     <!-- Modal para editar evento sin agendar -->
     <div class="modal fade" id="modalEditarEvento" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="formEditarEvento">
                     <div class="modal-header">
-                        <h5 class="modal-title">Editar evento</h5>
+                        <h5 class="modal-title">Editar Evento sin agendar</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -238,6 +160,13 @@
                             <label for="edit_tipo">Tipo</label>
                             <input type="text" id="edit_tipo" name="tipo" class="form-control">
                         </div>
+                        <div class="mb-3">
+                            <label>
+                                <input type="checkbox" id="edit_estado" name="estado" value="1">
+                                Activo
+                            </label>
+                        </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -275,6 +204,12 @@
                             <option value="Llamada">Llamada</option>
                         </select>
                     </div>
+                      <div class="mb-3">
+                            <label>
+                                <input type="checkbox" id="edit_estado" name="estado" value="1">
+                                Activo
+                            </label>
+                        </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="delete-event-btn" class="btn btn-danger">Eliminar</button>
@@ -404,59 +339,113 @@
             });
 
             // Crear nuevo evento
-            document.getElementById('add-event-btn').addEventListener('click', function() {
-                const nombre = document.getElementById('evt-nombre').value.trim();
-                const contacto = document.getElementById('evt-contacto').value.trim();
-                const telefono = document.getElementById('evt-telefono').value.trim();
-                const servicio = document.getElementById('evt-servicio').value.trim();
-                const asignado = document.getElementById('evt-asignado').value.trim();
-                const tipo = document.getElementById('new-event-type').value;
+document.getElementById('add-event-btn').addEventListener('click', function() {
 
-                if (!nombre || !telefono) {
-                    alert('Nombre y teléfono son obligatorios');
-                    return;
-                }
+    const nombre = document.getElementById('evt-nombre').value.trim();
+    const contacto = document.getElementById('evt-contacto').value.trim();
+    const telefono = document.getElementById('evt-telefono').value.trim();
+    const servicio = document.getElementById('evt-servicio').value.trim();
+    const asignado = document.getElementById('evt-asignado').value.trim();
+    const tipo = document.getElementById('new-event-type').value;
 
-                // 👉 Unir todo en un solo string separado por /
-                const title = `${nombre} _ ${contacto} _ ${telefono} _ ${asignado} _ ${servicio}`;
-                // if (!title) return;
-                alert(title)
+    // ✅ Validación con SweetAlert
+    if (!nombre || !telefono) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campos obligatorios',
+            text: 'Nombre y teléfono son obligatorios'
+        });
+        return;
+    }
 
-                fetch(urlStore, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token
-                        },
-                        body: JSON.stringify({
-                            title: title,
-                            tipo: tipo
-                        })
+    const title = `${nombre} _ ${contacto} _ ${telefono} _ ${asignado} _ ${servicio}`;
 
+    fetch(urlStore, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token
+        },
+        body: JSON.stringify({
+            title: title,
+            tipo: tipo
+        })
+    })
 
-                    })
+    .then(async res => {
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw errorData;
+        }
+        return res.json();
+    })
 
-                    .then(res => res.json())
-                    .then(data => {
-                        const div = document.createElement('div');
-                        div.classList.add('external-event', 'rounded', 'p-2', 'mb-2', 'text-white');
-                        div.style.background = tipoColors[data.event.tipo] || '#6c757d';
-                        div.dataset.id = data.event.id;
-                        div.dataset.tipo = data.event.tipo;
-                        div.title = data.event.title;
-                        div.innerText = data.event.title;
-                        div.style.cursor = 'grab';
-                        document.getElementById('external-events').appendChild(div);
-                        document.getElementById('new-event').value = '';
-                    })
+    .then(data => {
 
-                    .catch(err => console.error(err));
-                $('#modalEvento').modal('hide');
+        if (data.success) {
+
+            // ✅ Crear el evento visual
+            const div = document.createElement('div');
+            div.classList.add('external-event', 'rounded', 'p-2', 'mb-2', 'text-white');
+            div.style.background = tipoColors[tipo] || '#6c757d';
+            div.dataset.id = data.event.id;
+            div.dataset.tipo = tipo;
+            div.title = data.event.title;
+            div.innerText = data.event.title;
+            div.style.cursor = 'grab';
+
+            document.getElementById('external-events').appendChild(div);
+
+            // ✅ Limpiar campos
+            document.getElementById('evt-nombre').value = '';
+            document.getElementById('evt-contacto').value = '';
+            document.getElementById('evt-telefono').value = '';
+            document.getElementById('evt-servicio').value = '';
+            document.getElementById('evt-asignado').value = '';
+
+            // ✅ Cerrar modal
+            $('#modalEvento').modal('hide');
+
+            // ✅ SweetAlert éxito
+            Swal.fire({
+                icon: 'success',
+                title: '¡Guardado!',
+                text: 'La tarea se creó correctamente',
+                showConfirmButton: false,
+                timer: 1800
             });
+        }
+
+    })
+
+    .catch(err => {
+
+        // ✅ Si son errores de validación de Laravel
+        if (err.errors) {
+            let mensajes = Object.values(err.errors).flat().join('\n');
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Errores de validación',
+                text: mensajes
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Ocurrió un problema al guardar'
+            });
+        }
+
+        console.error(err);
+    });
+
+});
 
 
             // Guardar cambios desde modal
             document.getElementById('save-event-btn').addEventListener('click', function() {
+
                 const id = document.getElementById('edit-event-id').value;
                 const title = document.getElementById('edit-event-title').value.trim();
                 const start = document.getElementById('edit-event-fecha_inicio').value.trim();
@@ -491,6 +480,7 @@
 
             // MODIFICAR ESTADO  desde modal
             document.getElementById('delete-event-btn').addEventListener('click', function() {
+                alert('editar presionado')
                 const id = document.getElementById('edit-event-id').value;
                 const title = document.getElementById('edit-event-title').value.trim();
                 const tipo = document.getElementById('edit-event-type').value;
@@ -499,7 +489,7 @@
                 if (!title) return;
 
                 const url = updateEventUrl.replace(':id', id);
-                console.log(url);
+                // console.log(url);
                 fetch(url, {
                         method: 'PUT',
                         headers: {
@@ -526,10 +516,18 @@
                 let id = $(this).data('id');
                 let titulo = $(this).data('titulo');
                 let tipo = $(this).data('tipo');
-                console.log(id + "-" + titulo + "-" + tipo)
+                let estado = $(this).data('estado'); // 👈 agregar esto
+
                 $('#edit_evento_id').val(id);
                 $('#edit_titulo').val(titulo);
                 $('#edit_tipo').val(tipo);
+
+                // marcar checkbox según estado
+                if (estado == 1) {
+                    $('#edit_estado').prop('checked', true);
+                } else {
+                    $('#edit_estado').prop('checked', false);
+                }
 
                 $('#modalEditarEvento').modal('show');
             });
@@ -538,23 +536,70 @@
             // ::::::::::::::::::::::::::::::  
 
             // Eliminar evento desde modal
-            document.getElementById('delete-event-btn').addEventListener('click', function() {
-                const id = document.getElementById('edit-event-id').value;
-                const url = deleteEventUrl.replace(':id', id);
+            // document.getElementById('delete-event-btn').addEventListener('click', function() {
+            //     const id = document.getElementById('edit-event-id').value;
+            //     const url = deleteEventUrl.replace(':id', id);
+            //     fetch(url, {
+            //             method: 'DELETE',
+            //             headers: {
+            //                 'X-CSRF-TOKEN': token
+            //             }
+            //         })
+            //         .then(res => res.json())
+            //         .then(data => {
+            //             const ev = calendar.getEventById(id);
+            //             if (ev) ev.remove();
+            //             $('#editEventModal').modal('hide');
+            //         })
+            //         .catch(err => console.error(err));
+            // });
+
+
+            // guasrdar estado 
+            $('#formEditarEvento').on('submit', function(e) {
+                e.preventDefault();
+
+                const id = $('#edit_evento_id').val();
+                const titulo = $('#edit_titulo').val();
+                const tipo = $('#edit_tipo').val();
+                const estado = $('#edit_estado').is(':checked') ? 1 : 0;
+
+                const url = updateEstaUrl.replace(':id', id);
+
                 fetch(url, {
-                        method: 'DELETE',
+                        method: 'POST',
                         headers: {
+                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': token
-                        }
+                        },
+                        body: JSON.stringify({
+                            titulo,
+                            tipo,
+                            estado
+                        })
                     })
                     .then(res => res.json())
                     .then(data => {
-                        const ev = calendar.getEventById(id);
-                        if (ev) ev.remove();
-                        $('#editEventModal').modal('hide');
+
+                        // 🔹 Si lo desactivan → quitar de la lista izquierda
+                        if (estado == 0) {
+                            $(`.external-event[data-id="${id}"]`).remove();
+
+                            // agregar al calendario en rojo
+                            calendar.addEvent({
+                                id: data.event.id,
+                                title: data.event.titulo,
+                                start: new Date(),
+                                color: 'red'
+                            });
+                        }
+
+                        $('#modalEditarEvento').modal('hide');
                     })
                     .catch(err => console.error(err));
             });
+
+
         });
     </script>
 @stop
