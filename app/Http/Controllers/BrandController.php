@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 // app/Http/Controllers/BrandController.php
 class BrandController extends Controller
@@ -46,24 +47,39 @@ class BrandController extends Controller
     }
 
 
-    public function store(Request $request)
-    {
-        // Validamos los campos
-        $request->validate([
-            'name' => 'required|unique:brands,name',
-            'logo_url' => 'nullable|url',
-            'color_primary' => 'nullable|string',
-        ]);
+  public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|unique:brands,name',
+        'logo_url' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'color_primary' => 'nullable|string',
+    ]);
 
-        // Creamos el slug a partir del name automáticamente
-        $data = $request->all();
-        $data['slug'] = strtolower(str_replace(' ', '-', $request->name)); // minuscula y espacios por guiones
+    $data = $request->only(['name', 'color_primary']);
 
-        Brand::create($data);
+    // Generar slug automáticamente
+    $data['slug'] = Str::slug($request->name);
 
-        return redirect()->route('admin.brands.index')->with('success', 'Marca creada correctamente');
+    // Si hay imagen
+    if ($request->hasFile('logo_url')) {
+
+        $image = $request->file('logo_url');
+
+        // Nombre único
+        $filename = time() . '_' . Str::slug($request->name) . '.' . $image->getClientOriginalExtension();
+
+        // Guardar en storage/app/public/brands
+        $image->storeAs('brands', $filename, 'public');
+
+        // Guardar la URL en base de datos
+        $data['logo_url'] = 'storage/brands/' . $filename;
     }
 
+    Brand::create($data);
+
+    return redirect()->route('admin.brands.index')
+        ->with('success', 'Marca creada correctamente');
+}
 
 }
 

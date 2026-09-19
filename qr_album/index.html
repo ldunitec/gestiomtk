@@ -1,0 +1,1710 @@
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+  <base target="_top">
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Administración MEGATK</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f5f7;
+      color: #111827;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      margin: auto;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: #111827;
+      color: white;
+      padding: 25px 20px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    .header p {
+      margin: 6px 0 0;
+      opacity: .8;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .menu {
+      display: grid;
+      grid-template-columns:
+        repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .menu button {
+      border: none;
+      border-radius: 14px;
+      padding: 20px;
+      background: white;
+      box-shadow:
+        0 3px 12px rgba(0,0,0,.08);
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .menu button.activo {
+      background: #2563eb;
+      color: white;
+    }
+
+    .panel {
+      display: none;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow:
+        0 3px 12px rgba(0,0,0,.08);
+      margin-bottom: 20px;
+    }
+
+    .panel.activo {
+      display: block;
+    }
+
+    .titulo {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+
+    .formulario {
+      display: grid;
+      grid-template-columns:
+        repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .campo label {
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+
+    .campo-completo {
+      grid-column: 1 / -1;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .tabla-contenedor {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th,
+    td {
+      padding: 11px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      background: #f3f4f6;
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .badge-activo {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-inactivo {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .mensaje {
+      display: none;
+      padding: 13px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .mensaje.exito {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .mensaje.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .mensaje.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .cargando {
+      text-align: center;
+      padding: 25px;
+      color: #666;
+    }
+
+    @media (max-width: 700px) {
+
+      .content {
+        padding: 12px;
+      }
+
+      .menu {
+        grid-template-columns: 1fr;
+      }
+
+      .formulario {
+        grid-template-columns: 1fr;
+      }
+
+      .campo-completo {
+        grid-column: auto;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div class="app">
+
+
+  <!-- HEADER -->
+
+  <header class="header">
+
+    <h1>
+      MEGATK
+    </h1>
+
+    <p>
+      Panel de Administración
+    </p>
+
+  </header>
+
+
+  <main class="content">
+
+
+    <div
+      id="mensaje"
+      class="mensaje">
+    </div>
+
+
+    <!-- MENÚ -->
+
+    <div class="menu">
+
+      <button
+        id="btnTecnicos"
+        class="activo"
+        onclick="mostrarPanel('tecnicos')">
+
+        👤 Técnicos
+
+      </button>
+
+
+      <button
+        id="btnHerramientas"
+        onclick="mostrarPanel('herramientas')">
+
+        🔧 Herramientas
+
+      </button>
+
+
+      <button
+        id="btnAsignaciones"
+        onclick="mostrarPanel('asignaciones')">
+
+        🔗 Asignaciones
+
+      </button>
+
+    </div>
+
+
+    <!-- =========================================
+         TÉCNICOS
+    ========================================== -->
+
+    <section
+      id="panelTecnicos"
+      class="panel activo">
+
+      <div class="titulo">
+        👤 Técnicos / Empleados
+      </div>
+
+
+      <div class="formulario">
+
+
+        <div class="campo">
+
+          <label>
+            Nombre completo
+          </label>
+
+          <input
+            id="tecnicoNombre"
+            type="text"
+            placeholder="Ej. Juan Pérez"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Departamento
+          </label>
+
+          <input
+            id="tecnicoDepartamento"
+            type="text"
+            placeholder="Ej. Soporte Técnico"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Teléfono
+          </label>
+
+          <input
+            id="tecnicoTelefono"
+            type="text"
+            placeholder="Ej. 9999-9999"
+          >
+
+        </div>
+
+
+        <div
+          class="campo"
+          style="justify-content:end;">
+
+          <button
+            class="btn btn-primary"
+            onclick="agregarTecnico()">
+
+            ➕ Agregar técnico
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="tablaTecnicos"
+        class="tabla-contenedor">
+
+        <div class="cargando">
+          Cargando técnicos...
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         HERRAMIENTAS
+    ========================================== -->
+
+    <section
+      id="panelHerramientas"
+      class="panel">
+
+      <div class="titulo">
+        🔧 Catálogo de herramientas
+      </div>
+
+
+      <div class="formulario">
+
+
+        <div class="campo">
+
+          <label>
+            Código
+          </label>
+
+          <input
+            id="herramientaCodigo"
+            type="text"
+            placeholder="Ej. HERR-001"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Herramienta
+          </label>
+
+          <input
+            id="herramientaNombre"
+            type="text"
+            placeholder="Ej. Multímetro"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Categoría
+          </label>
+
+          <input
+            id="herramientaCategoria"
+            type="text"
+            placeholder="Ej. Electrónica"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Marca
+          </label>
+
+          <input
+            id="herramientaMarca"
+            type="text"
+            placeholder="Ej. Fluke"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Modelo
+          </label>
+
+          <input
+            id="herramientaModelo"
+            type="text"
+            placeholder="Ej. 117"
+          >
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Número de serie
+          </label>
+
+          <input
+            id="herramientaSerie"
+            type="text"
+            placeholder="Ej. FL123456"
+          >
+
+        </div>
+
+
+        <div
+          class="campo-completo">
+
+          <button
+            class="btn btn-primary"
+            onclick="agregarHerramienta()">
+
+            ➕ Agregar herramienta
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="tablaHerramientas"
+        class="tabla-contenedor">
+
+        <div class="cargando">
+          Cargando herramientas...
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         ASIGNACIONES
+    ========================================== -->
+
+    <section
+      id="panelAsignaciones"
+      class="panel">
+
+      <div class="titulo">
+        🔗 Asignar herramienta a técnico
+      </div>
+
+
+      <div class="formulario">
+
+
+        <div class="campo">
+
+          <label>
+            Técnico
+          </label>
+
+          <select id="selectTecnicoAsignacion">
+
+            <option value="">
+              Seleccione...
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="campo">
+
+          <label>
+            Herramienta
+          </label>
+
+          <select id="selectHerramientaAsignacion">
+
+            <option value="">
+              Seleccione...
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="campo-completo">
+
+          <button
+            class="btn btn-success"
+            onclick="asignarHerramienta()">
+
+            🔗 Asignar herramienta
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="tablaAsignaciones"
+        class="tabla-contenedor">
+
+        <div class="cargando">
+          Cargando asignaciones...
+        </div>
+
+      </div>
+
+    </section>
+
+
+  </main>
+
+</div>
+
+
+<script>
+
+
+// =====================================================
+// VARIABLES
+// =====================================================
+
+let datosSistema = {
+
+  tecnicos: [],
+
+  herramientas: [],
+
+  asignaciones: []
+
+};
+
+
+// =====================================================
+// INICIO
+// =====================================================
+
+document.addEventListener(
+  "DOMContentLoaded",
+  iniciar
+);
+
+
+function iniciar() {
+
+  cargarDatos();
+
+}
+
+
+// =====================================================
+// CARGAR DATOS
+// =====================================================
+
+function cargarDatos() {
+
+  mostrarInfo(
+    "⏳ Cargando información..."
+  );
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(resultado) {
+
+        if (
+          !resultado ||
+          resultado.ok === false
+        ) {
+
+          mostrarError(
+            resultado?.mensaje ||
+            "No se pudieron cargar los datos."
+          );
+
+          return;
+
+        }
+
+
+        datosSistema =
+          resultado;
+
+
+        mostrarTecnicos();
+
+        mostrarHerramientas();
+
+        mostrarAsignaciones();
+
+        llenarSelects();
+
+
+        ocultarMensaje();
+
+      }
+    )
+
+    .withFailureHandler(
+      mostrarError
+    )
+
+    .obtenerDatosAdministracion();
+
+}
+
+
+// =====================================================
+// CAMBIAR PANEL
+// =====================================================
+
+function mostrarPanel(
+  panel
+) {
+
+  document
+    .querySelectorAll(".panel")
+    .forEach(
+      elemento =>
+        elemento.classList.remove(
+          "activo"
+        )
+    );
+
+
+  document
+    .querySelectorAll(".menu button")
+    .forEach(
+      boton =>
+        boton.classList.remove(
+          "activo"
+        )
+    );
+
+
+  document
+    .getElementById(
+      "panel" +
+      panel.charAt(0).toUpperCase() +
+      panel.slice(1)
+    )
+    .classList.add(
+      "activo"
+    );
+
+
+  document
+    .getElementById(
+      "btn" +
+      panel.charAt(0).toUpperCase() +
+      panel.slice(1)
+    )
+    .classList.add(
+      "activo"
+    );
+
+}
+
+
+// =====================================================
+// TÉCNICOS
+// =====================================================
+
+function mostrarTecnicos() {
+
+  const contenedor =
+    document.getElementById(
+      "tablaTecnicos"
+    );
+
+
+  if (
+    !datosSistema.tecnicos ||
+    datosSistema.tecnicos.length === 0
+  ) {
+
+    contenedor.innerHTML =
+      '<div class="cargando">' +
+      'No hay técnicos registrados.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  let html = `
+
+    <table>
+
+      <thead>
+
+        <tr>
+
+          <th>Nombre</th>
+
+          <th>Departamento</th>
+
+          <th>Teléfono</th>
+
+          <th>Estado</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+  `;
+
+
+  datosSistema.tecnicos.forEach(
+    tecnico => {
+
+      html += `
+
+        <tr>
+
+          <td>
+            ${escapeHtml(
+              tecnico.nombre
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              tecnico.departamento
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              tecnico.telefono
+            )}
+          </td>
+
+          <td>
+
+            <span class="badge badge-activo">
+              ACTIVO
+            </span>
+
+          </td>
+
+        </tr>
+
+      `;
+
+    }
+  );
+
+
+  html += `
+
+      </tbody>
+
+    </table>
+
+  `;
+
+
+  contenedor.innerHTML =
+    html;
+
+}
+
+
+// =====================================================
+// AGREGAR TÉCNICO
+// =====================================================
+
+function agregarTecnico() {
+
+  const datos = {
+
+    nombre:
+      document.getElementById(
+        "tecnicoNombre"
+      ).value.trim(),
+
+    departamento:
+      document.getElementById(
+        "tecnicoDepartamento"
+      ).value.trim(),
+
+    telefono:
+      document.getElementById(
+        "tecnicoTelefono"
+      ).value.trim()
+
+  };
+
+
+  if (!datos.nombre) {
+
+    mostrarError(
+      "Ingrese el nombre del técnico."
+    );
+
+    return;
+
+  }
+
+
+  mostrarInfo(
+    "⏳ Guardando técnico..."
+  );
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(resultado) {
+
+        if (
+          resultado &&
+          resultado.ok
+        ) {
+
+          document.getElementById(
+            "tecnicoNombre"
+          ).value = "";
+
+          document.getElementById(
+            "tecnicoDepartamento"
+          ).value = "";
+
+          document.getElementById(
+            "tecnicoTelefono"
+          ).value = "";
+
+
+          mostrarExito(
+            "✅ " +
+            resultado.mensaje
+          );
+
+
+          cargarDatos();
+
+        } else {
+
+          mostrarError(
+            resultado?.mensaje ||
+            "No se pudo agregar el técnico."
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      mostrarError
+    )
+
+    .agregarTecnico(
+      datos
+    );
+
+}
+
+
+// =====================================================
+// HERRAMIENTAS
+// =====================================================
+
+function mostrarHerramientas() {
+
+  const contenedor =
+    document.getElementById(
+      "tablaHerramientas"
+    );
+
+
+  if (
+    !datosSistema.herramientas ||
+    datosSistema.herramientas.length === 0
+  ) {
+
+    contenedor.innerHTML =
+      '<div class="cargando">' +
+      'No hay herramientas registradas.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  let html = `
+
+    <table>
+
+      <thead>
+
+        <tr>
+
+          <th>Código</th>
+
+          <th>Herramienta</th>
+
+          <th>Categoría</th>
+
+          <th>Marca</th>
+
+          <th>Modelo</th>
+
+          <th>Serie</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+  `;
+
+
+  datosSistema.herramientas.forEach(
+    herramienta => {
+
+      html += `
+
+        <tr>
+
+          <td>
+            ${escapeHtml(
+              herramienta.codigo
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta.herramienta
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta.categoria
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta.marca
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta.modelo
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta.serie
+            )}
+          </td>
+
+        </tr>
+
+      `;
+
+    }
+  );
+
+
+  html += `
+
+      </tbody>
+
+    </table>
+
+  `;
+
+
+  contenedor.innerHTML =
+    html;
+
+}
+
+
+// =====================================================
+// AGREGAR HERRAMIENTA
+// =====================================================
+
+function agregarHerramienta() {
+
+  const datos = {
+
+    codigo:
+      document.getElementById(
+        "herramientaCodigo"
+      ).value.trim(),
+
+    herramienta:
+      document.getElementById(
+        "herramientaNombre"
+      ).value.trim(),
+
+    categoria:
+      document.getElementById(
+        "herramientaCategoria"
+      ).value.trim(),
+
+    marca:
+      document.getElementById(
+        "herramientaMarca"
+      ).value.trim(),
+
+    modelo:
+      document.getElementById(
+        "herramientaModelo"
+      ).value.trim(),
+
+    serie:
+      document.getElementById(
+        "herramientaSerie"
+      ).value.trim()
+
+  };
+
+
+  if (!datos.herramienta) {
+
+    mostrarError(
+      "Ingrese el nombre de la herramienta."
+    );
+
+    return;
+
+  }
+
+
+  mostrarInfo(
+    "⏳ Guardando herramienta..."
+  );
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(resultado) {
+
+        if (
+          resultado &&
+          resultado.ok
+        ) {
+
+          [
+            "herramientaCodigo",
+            "herramientaNombre",
+            "herramientaCategoria",
+            "herramientaMarca",
+            "herramientaModelo",
+            "herramientaSerie"
+          ]
+          .forEach(
+            id =>
+              document.getElementById(
+                id
+              ).value = ""
+          );
+
+
+          mostrarExito(
+            "✅ " +
+            resultado.mensaje
+          );
+
+
+          cargarDatos();
+
+        } else {
+
+          mostrarError(
+            resultado?.mensaje ||
+            "No se pudo agregar la herramienta."
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      mostrarError
+    )
+
+    .agregarHerramienta(
+      datos
+    );
+
+}
+
+
+// =====================================================
+// SELECTS
+// =====================================================
+
+function llenarSelects() {
+
+  const selectTecnico =
+    document.getElementById(
+      "selectTecnicoAsignacion"
+    );
+
+
+  const selectHerramienta =
+    document.getElementById(
+      "selectHerramientaAsignacion"
+    );
+
+
+  selectTecnico.innerHTML =
+    '<option value="">Seleccione...</option>';
+
+
+  selectHerramienta.innerHTML =
+    '<option value="">Seleccione...</option>';
+
+
+  datosSistema.tecnicos
+    .forEach(
+      tecnico => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          tecnico.id;
+
+
+        option.textContent =
+          tecnico.nombre;
+
+
+        selectTecnico.appendChild(
+          option
+        );
+
+      }
+    );
+
+
+  datosSistema.herramientas
+    .filter(
+      herramienta =>
+        herramienta.activo !== false
+    )
+    .forEach(
+      herramienta => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          herramienta.id;
+
+
+        option.textContent =
+
+          herramienta.codigo +
+          " — " +
+          herramienta.herramienta;
+
+
+        selectHerramienta.appendChild(
+          option
+        );
+
+      }
+    );
+
+}
+
+
+// =====================================================
+// ASIGNACIONES
+// =====================================================
+
+function mostrarAsignaciones() {
+
+  const contenedor =
+    document.getElementById(
+      "tablaAsignaciones"
+    );
+
+
+  if (
+    !datosSistema.asignaciones ||
+    datosSistema.asignaciones.length === 0
+  ) {
+
+    contenedor.innerHTML =
+      '<div class="cargando">' +
+      'No hay asignaciones registradas.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  let html = `
+
+    <table>
+
+      <thead>
+
+        <tr>
+
+          <th>Técnico</th>
+
+          <th>Herramienta</th>
+
+          <th>Fecha asignación</th>
+
+          <th>Acción</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+  `;
+
+
+  datosSistema.asignaciones.forEach(
+    asignacion => {
+
+      const tecnico =
+        datosSistema.tecnicos.find(
+          t =>
+            String(t.id) ===
+            String(
+              asignacion.tecnicoId
+            )
+        );
+
+
+      const herramienta =
+        datosSistema.herramientas.find(
+          h =>
+            String(h.id) ===
+            String(
+              asignacion.herramientaId
+            )
+        );
+
+
+      html += `
+
+        <tr>
+
+          <td>
+            ${escapeHtml(
+              tecnico?.nombre || ""
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              herramienta
+                ? herramienta.codigo +
+                  " — " +
+                  herramienta.herramienta
+                : ""
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              asignacion.fechaAsignacion
+            )}
+          </td>
+
+          <td>
+
+            <button
+              class="btn btn-danger"
+              onclick="desasignar('${escapeHtml(asignacion.id)}')">
+
+              Desasignar
+
+            </button>
+
+          </td>
+
+        </tr>
+
+      `;
+
+    }
+  );
+
+
+  html += `
+
+      </tbody>
+
+    </table>
+
+  `;
+
+
+  contenedor.innerHTML =
+    html;
+
+}
+
+
+// =====================================================
+// ASIGNAR
+// =====================================================
+
+function asignarHerramienta() {
+
+  const tecnicoId =
+    document.getElementById(
+      "selectTecnicoAsignacion"
+    ).value;
+
+
+  const herramientaId =
+    document.getElementById(
+      "selectHerramientaAsignacion"
+    ).value;
+
+
+  if (
+    !tecnicoId ||
+    !herramientaId
+  ) {
+
+    mostrarError(
+      "Seleccione técnico y herramienta."
+    );
+
+    return;
+
+  }
+
+
+  mostrarInfo(
+    "⏳ Asignando herramienta..."
+  );
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(resultado) {
+
+        if (
+          resultado &&
+          resultado.ok
+        ) {
+
+          mostrarExito(
+            "✅ " +
+            resultado.mensaje
+          );
+
+
+          cargarDatos();
+
+        } else {
+
+          mostrarError(
+            resultado?.mensaje ||
+            "No se pudo realizar la asignación."
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      mostrarError
+    )
+
+    .asignarHerramienta(
+      tecnicoId,
+      herramientaId
+    );
+
+}
+
+
+// =====================================================
+// DESASIGNAR
+// =====================================================
+
+function desasignar(
+  id
+) {
+
+  if (
+    !confirm(
+      "¿Desea desasignar esta herramienta?"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(resultado) {
+
+        if (
+          resultado &&
+          resultado.ok
+        ) {
+
+          mostrarExito(
+            "✅ " +
+            resultado.mensaje
+          );
+
+
+          cargarDatos();
+
+        } else {
+
+          mostrarError(
+            resultado?.mensaje ||
+            "No se pudo desasignar."
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      mostrarError
+    )
+
+    .desasignarHerramienta(
+      id
+    );
+
+}
+
+
+// =====================================================
+// MENSAJES
+// =====================================================
+
+function mostrarExito(
+  texto
+) {
+
+  const mensaje =
+    document.getElementById(
+      "mensaje"
+    );
+
+
+  mensaje.className =
+    "mensaje exito";
+
+
+  mensaje.textContent =
+    texto;
+
+}
+
+
+function mostrarInfo(
+  texto
+) {
+
+  const mensaje =
+    document.getElementById(
+      "mensaje"
+    );
+
+
+  mensaje.className =
+    "mensaje info";
+
+
+  mensaje.textContent =
+    texto;
+
+}
+
+
+function mostrarError(
+  error
+) {
+
+  console.error(
+    error
+  );
+
+
+  const mensaje =
+    document.getElementById(
+      "mensaje"
+    );
+
+
+  mensaje.className =
+    "mensaje error";
+
+
+  mensaje.textContent =
+
+    typeof error === "string"
+
+      ? error
+
+      : (
+          error?.message ||
+          "Ocurrió un error."
+        );
+
+}
+
+
+function ocultarMensaje() {
+
+  document.getElementById(
+    "mensaje"
+  ).className =
+    "mensaje";
+
+}
+
+
+// =====================================================
+// SEGURIDAD
+// =====================================================
+
+function escapeHtml(
+  valor
+) {
+
+  return String(
+    valor ?? ""
+  )
+
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}
+
+</script>
+
+</body>
+
+</html>
+

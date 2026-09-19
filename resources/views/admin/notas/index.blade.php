@@ -22,7 +22,7 @@
                         <input type="text" name="titulo" class="form-control" placeholder="Título" required>
                     </div>
                     <div class="col-md-6">
-                        <input type="text" name="nota" class="form-control" placeholder="Nota" required>
+                        <input type="text" name="nota" class="form-control" placeholder="Nota2" required>
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-primary w-100">Agregar</button>

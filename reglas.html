@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matriz de Perfiles Kaspersky</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="container py-4">
+<h2>Matriz de Perfiles de Seguridad</h2>
+
+<div class="row mb-3">
+  <div class="col"><input id="responsable" class="form-control" placeholder="Responsable"></div>
+  <div class="col"><input id="departamento" class="form-control" placeholder="Departamento"></div>
+  <div class="col"><input id="fecha" type="date" class="form-control"></div>
+</div>
+
+<div class="card p-3 mb-3">
+  <h5>Nuevo Perfil</h5>
+  <div class="input-group">
+    <input id="nuevoPerfil" class="form-control">
+    <button class="btn btn-primary" onclick="agregarPerfil()">Agregar Perfil</button>
+  </div>
+</div>
+
+<div class="card p-3 mb-3">
+  <h5>Nueva Regla</h5>
+  <input id="regla" class="form-control mb-2" placeholder="Descripción de la regla">
+  <div id="checks"></div>
+  <button class="btn btn-success mt-2" onclick="agregarRegla()">Agregar Regla</button>
+</div>
+
+<button class="btn btn-success" onclick="exportarExcel()">Excel</button>
+<button class="btn btn-danger" onclick="exportarPDF()">PDF</button>
+
+<table id="tabla" class="table table-bordered mt-3">
+<thead><tr id="head"><th>Regla</th><th>Acción</th></tr></thead>
+<tbody></tbody>
+</table>
+
+<script>
+let perfiles = JSON.parse(localStorage.getItem('perfiles') || '["GENERAL","NO USB","GERENCIA","SOPORTE","STREAMING","LIMITADO"]');
+
+function guardar(){
+ localStorage.setItem('perfiles', JSON.stringify(perfiles));
+ localStorage.setItem('tabla', document.querySelector('#tabla tbody').innerHTML);
+}
+
+function renderPerfiles(){
+ let c=document.getElementById('checks');
+ c.innerHTML='';
+ perfiles.forEach(p=>{
+   c.innerHTML += `<label class="me-3"><input type="checkbox" value="${p}"> ${p}</label>`;
+ });
+ let h='<th>Regla</th>';
+ perfiles.forEach(p=>h+=`<th>${p}</th>`);
+ h+='<th>Acción</th>';
+ document.getElementById('head').innerHTML=h;
+}
+
+function agregarPerfil(){
+ let p=document.getElementById('nuevoPerfil').value.trim();
+ if(!p) return;
+ perfiles.push(p);
+ renderPerfiles();
+ guardar();
+ document.getElementById('nuevoPerfil').value='';
+}
+
+function agregarRegla(){
+ let r=document.getElementById('regla').value.trim();
+ if(!r) return;
+ let tr='<tr><td contenteditable="true">'+r+'</td>';
+ perfiles.forEach(p=>{
+   let ok=[...document.querySelectorAll('#checks input')].find(x=>x.value===p)?.checked;
+   tr+='<td>'+(ok?'✔':'')+'</td>';
+ });
+ tr+='<td><button class="btn btn-sm btn-danger" onclick="this.closest(\'tr\').remove();guardar()">Eliminar</button></td></tr>';
+ document.querySelector('#tabla tbody').insertAdjacentHTML('beforeend',tr);
+ document.getElementById('regla').value='';
+ document.querySelectorAll('#checks input').forEach(x=>x.checked=false);
+ guardar();
+}
+
+function exportarExcel(){
+ let wb=XLSX.utils.table_to_book(document.getElementById('tabla'));
+ XLSX.writeFile(wb,'Matriz_Perfiles.xlsx');
+}
+
+async function exportarPDF(){
+ const {jsPDF}=window.jspdf;
+ let doc=new jsPDF('landscape');
+ doc.text('Matriz de Seguridad',14,15);
+ doc.text('Responsable: '+document.getElementById('responsable').value,14,22);
+ doc.text('Departamento: '+document.getElementById('departamento').value,14,29);
+ doc.text('Fecha: '+document.getElementById('fecha').value,14,36);
+ doc.autoTable({html:'#tabla',startY:45});
+ doc.save('Matriz_Perfiles.pdf');
+}
+
+renderPerfiles();
+let t=localStorage.getItem('tabla');
+if(t) document.querySelector('#tabla tbody').innerHTML=t;
+</script>
+</body>
+</html>

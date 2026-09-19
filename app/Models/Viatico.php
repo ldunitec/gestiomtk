@@ -7,16 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class Viatico extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'origen',
-        'destino',
-        'cliente',
-        'detalle_visita',
-        'vehiculo',
-        'km',
-        'ida_vuelta',
-        'tarifa_km',
-        'total'
+        'ciudad',
+        'distancia_km',
+        'hospedaje',
+        'alimentacion',
+        'peajes',
+        'combustible',
+        'cantidad_tecnicos',
+        'dias',
+        'extra',
+        'total',
     ];
 }
+
+
 

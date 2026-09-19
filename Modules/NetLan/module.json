@@ -1,0 +1,11 @@
+{
+    "name": "NetLan",
+    "alias": "netlan",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\NetLan\\Providers\\NetLanServiceProvider"
+    ],
+    "files": []
+}

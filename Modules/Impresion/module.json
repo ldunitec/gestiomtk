@@ -1,0 +1,11 @@
+{
+    "name": "Impresion",
+    "alias": "impresion",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Impresion\\Providers\\ImpresionServiceProvider"
+    ],
+    "files": []
+}

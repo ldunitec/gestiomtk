@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="miFormulario">
+  <input type="text" name="nombre" placeholder="Tu nombre" required>
+  <input type="email" name="email" placeholder="Tu correo" required>
+  <textarea name="mensaje" placeholder="Tu mensaje"></textarea>
+  <button type="submit">Enviar</button>
+</form>
+
+<script>
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbx4BdO2pjcdWmwXa-xRh8gyWQFv0HoigjG8BOvP3PB5QC2HwTnhz-cyzPlUnrMOBFuN/exec';
+  const form = document.getElementById('miFormulario');
+
+  form.addEventListener('submit', e => {
+      e.preventDefault();
+      console.log(form),
+    
+    fetch(scriptURL, { 
+      method: 'POST', 
+      body: new FormData(form), 
+    })
+    .then(response => {
+      alert('¡Datos guardados con éxito en Google Sheets!');
+      form.reset();
+    })
+    .catch(error => console.error('Error al enviar los datos:', error));
+  });
+</script>
+</body>
+</html>

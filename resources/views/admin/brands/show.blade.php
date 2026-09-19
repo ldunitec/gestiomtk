@@ -4,7 +4,8 @@
     <div class="row align-items-center">
         <div class="col-md-2">
  <div class="icon">
-                        <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" style="max-width:120px;">
+                        {{-- <img src="{{ $brand->logo_url }}" alt="{{ $brand->name }}" style="max-width:120px;"> --}}
+                        <img src="{{ asset($brand->logo_url) }}" alt="{{ $brand->name }}"   width="100">
                     </div>
         </div>
 
@@ -89,7 +90,13 @@
                         <input type="text" name="titulo" class="form-control" placeholder="Título">
                     </div>
                     <div class="col-md-8">
-                        <input type="text" name="nota" class="form-control" placeholder="Nota" required>
+                        
+<div class="form-group">
+    <label>Nota</label>
+    <textarea name="nota" id="nota" class="form-control"></textarea>
+</div>
+                        {{-- <textarea name="nota" id="" class="form-control"></textarea> --}}
+                        {{-- <input type="textArea" name="nota" class="form-control" placeholder="Nota" required> --}}
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-{{ $brand->color_primary }} w-100">Agregar</button>
@@ -123,4 +130,11 @@
                 .fail(() => alert('Error'));
         });
     </script>
+    <script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    CKEDITOR.replace('nota');
+});
+</script>
 @stop

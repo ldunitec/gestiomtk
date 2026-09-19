@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'title' => 'Sistema de gestión MTK',
+    'title' => 'Sistema de gestión',
     'title_prefix' => '',
     'title_postfix' => '',
 
@@ -298,250 +298,299 @@ return [
     |
     */
 
-    'menu' => [
-
-        [
-            'type' => 'fullscreen-widget',
-            'topnav_right' => true,
-        ],
-
-
-
-        ['header' => 'DATOS DEL SISTEMA'],
-
-        [
-            'text' => 'CONFIGURACION',
-            'icon' => 'fas fa-cogs',
-            'submenu' => [
-                [
-                    'text' => 'Configuración',
-                    'url' => 'admin/configuraciones',
-                    'icon' => 'fas fa-fw fa-cogs',
-                    'classes' => 'bg-blue text-white',
-                    'can' => 'admin.configuraciones.index',
-                    
-                ],
-
-                [
-                    'text' => 'Respaldo DB',
-                    'url' => 'admin/backups',
-                    'icon' => 'fas fa-fw fa-cogs',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Permisos',
-                    'url' => 'admin/roles',
-                    'icon' => 'fas fa-fw fa-user',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Departamentos',
-                    'url' => 'admin/departamentos',
-                    'icon' => 'fas fa-fw fa-building',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Empleados',
-                    'url' => 'admin/empleados',
-                    'icon' => 'fas fa-fw fa-user',
-                    'classes' => 'bg-blue text-white',
-                ],
-
-            ],
-        ],
-
-
-        [
-            'text' => 'RED DE DATOS',
-            'icon' => 'fas fa-network-wired',
-            'submenu' => [
-                [
-                    'text' => 'Marcas',
-                    'url' => 'admin/marcas',
-                    'icon' => 'fas fa-fw fa-tasks',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Modelos',
-                    'url' => 'admin/modelos',
-                    'icon' => 'fas fa-fw fa-tasks',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Equipos',
-                    'url' => 'admin/equipos',
-                    'icon' => 'fas fa-fw fa-laptop',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Panel',
-                    'url' => 'admin/paneles',
-                    'icon' => 'fas fa-fw fa-laptop',
-                    'classes' => 'bg-blue text-white',
-                ],
-
-                [
-                    'text' => 'Patch Panels',
-                    'url' => 'admin/patch_panels',
-                    'icon' => 'fas fa-fw fa-desktop',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Switch y Router',
-                    'url' => 'admin/switchs',
-                    'icon' => 'fas fa-fw fa-laptop',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Puertos Patch Panel',
-                    'url' => 'admin/ports',
-                    'icon' => 'fas fa-fw fa-desktop',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Puertos Switch',
-                    'url' => 'admin/switchs',
-                    'icon' => 'fas fa-fw fa-laptop',
-                    'classes' => 'bg-blue text-white',
-                ],
-                [
-                    'text' => 'Conexiones',
-                    'url' => 'admin/connections',
-                    'icon' => 'fas fa-fw fa-graduation-cap',
-                    'classes' => 'bg-blue text-white',
-                ],
-
-
-            ],
-        ],
-
-        [
-            'text' => 'MIKROTIK',
-            'icon' => 'fas fa-ethernet',
-            'submenu' => [
-                [
-                    'text' => 'Autorizar Internet',
-                    'url' => 'admin/mikrotik/autorizar',
-                    'icon' => 'fas fa-wifi',
-                    'classes' => 'bg-orange text-white',
-                ],
-                [
-                    'text' => 'cliente Internet',
-                    'url' => 'admin/mikrotik/clientes',
-                    'icon' => 'fas fa-wifi',
-                    'classes' => 'bg-orange text-white',
-                ],
-                [
-                    'text' => 'cliente Conectados',
-                    'url' => 'admin/mikrotik/conectados',
-                    'icon' => 'fas fa-wifi',
-                    'classes' => 'bg-orange text-white',
-                ],
-
-                [
-                    'text' => 'Diagrama Red',
-                    'url' => 'admin/diagramas/red',
-                    'icon' => 'fas fa-wifi',
-                    'classes' => 'bg-orange text-white',
-                ],
-
-            ],
-        ],
-
-        [
-            'text' => 'BTR',
-            'icon' => 'fas fa-bus',
-            'submenu' => [
-
-                [
-                    'text' => 'BTR',
-                    'url' => 'admin/inventarioBTR/dashboard',
-                    'icon' => 'fas fa-fw fa-user',
-                    'classes' => 'bg-info text-white',
-                ],
-                [
-                    'text' => 'Inventario BTR ',
-                    'url' => 'admin/inventarioBTR',
-                    'icon' => 'fas fa-fw fa-user',
-                    'classes' => 'bg-info text-white',
-                ],
-                [
-                    'text' => 'MAPAS BTR ',
-                    'url' => 'admin/inventarioBTR/mapas_btr',
-                    'icon' => 'fas fa-fw fa-user',
-                    'classes' => 'bg-info text-white',
-                ],
-
-            ],
-        ],
-
-        [
-            'text' => 'Asistencia',
-            'url' => 'admin/marcaciones',
-            'icon' => 'fas fa-fw fa-clock',
-            'can' => 'admin.marcaciones.index',
-        ],
-        [
-            'text' => 'Agenda Semanal',
-            'url' => 'admin/agenda',
-            'icon' => 'fas fa-fw fa-calendar',
-            // 'classes' => 'bg-blue text-white',
-        ],
-        [
-            'text' => 'Drivers y Manuales',
-            'icon' => 'fas fa-download',
-            'route' => 'admin.brands.index',
-            'can' => 'admin.brands.index',
-            // 'classes' => 'bg-blue text-white',
-        ],
-
-
-
-
-        [
-            'text' => 'Carnet',
-            'url' => 'admin/idcards',
-            'icon' => 'fas fa-fw fa-user',
-        ],
-
-        [
-            'text' => 'Carnets CR80',
-            'icon' => 'fas fa-id-card',
-            'submenu' => [
-                [
-                    'text' => 'Diseños',
-                    'url' => 'admin/idcards',
-                    'icon' => 'far fa-circle',
-                ],
-                [
-                    'text' => 'Nuevo diseño',
-                    'url' => 'admin/idcards/create',
-                    'icon' => 'far fa-circle',
-                ],
-                [
-                    'text' => 'Historial de impresiones',
-                    'url' => 'admin/idcards/history',
-                    'icon' => 'far fa-circle',
-                ],
-            ],
-        ],
-
-        [
-            'text' => 'Viaticos',
-            'url' => 'admin/viaticos',
-            'icon' => 'fas fa-fw fa-user',
-        ],
-        [
-            'text' => 'profile',
-            'url' => 'admin/settings',
-            'icon' => 'fas fa-fw fa-user',
-        ],
-
+   'menu' => [
+    // Top Nav Widgets
+    [
+        'type'         => 'fullscreen-widget',
+        'topnav_right' => true,
     ],
 
+    // --- ADMINISTRACIÓN DEL SISTEMA ---
+    ['header' => 'ADMINISTRACIÓN Y AJUSTES'],
 
+    [
+        'text'    => 'Configuración',
+        'icon'    => 'fas fa-cogs',
+        'submenu' => [
+            [
+                'can'  => 'admin.configuracion.index',
+                'text' => 'General',
+                'url'  => 'admin/configuraciones',
+                'icon' => 'fas fa-fw fa-sliders-h',
+            ],
+            [
+                'can'  => 'admin.backups.index',
+                'text' => 'Respaldo DB',
+                'url'  => 'admin/backups',
+                'icon' => 'fas fa-fw fa-database',
+            ],
+            [
+                'can'  => 'admin.roles.index',
+                'text' => 'Permisos y Roles',
+                'url'  => 'admin/roles',
+                'icon' => 'fas fa-fw fa-user-shield',
+            ],
+            [
+                'text' => 'Departamentos',
+                'url'  => 'netlan/admin/departamentos',
+                'icon' => 'fas fa-fw fa-building',
+            ],
+            [
+                'can'  => 'admin.empleados.index',
+                'text' => 'Empleados',
+                'url'  => 'netlan/admin/empleados',
+                'icon' => 'fas fa-fw fa-users',
+            ],
+        ],
+    ],
 
+    // --- REDES E INFRAESTRUCTURA ---
+    ['header' => 'INFRAESTRUCTURA Y RED'],
 
+    [
+        'text'    => 'Red de Datos',
+        'icon'    => 'fas fa-network-wired',
+        'submenu' => [
+            [
+                'can'  => 'admin.marcas.index',
+                'text' => 'Marcas',
+                'url'  => 'netlan/admin/marcas',
+                'icon' => 'fas fa-fw fa-copyright',
+            ],
+            [
+                'can'  => 'admin.modelos.index',
+                'text' => 'Modelos',
+                'url'  => 'netlan/admin/modelos',
+                'icon' => 'fas fa-fw fa-cubes',
+            ],
+            [
+                'can'  => 'admin.equipos.index',
+                'text' => 'Equipos',
+                'url'  => 'netlan/admin/equipos',
+                'icon' => 'fas fa-fw fa-desktop',
+            ],
+            [
+                'can'  => 'admin.paneles.index',
+                'text' => 'Paneles',
+                'url'  => 'netlan/admin/paneles',
+                'icon' => 'fas fa-fw fa-server',
+            ],
+            [
+                'can'  => 'admin.empleados.index',
+                'text' => 'Patch Panels',
+                'url'  => 'netlan/admin/patchPanel',
+                'icon' => 'fas fa-fw fa-ethernet',
+            ],
+            [
+                'text' => 'Switches y Routers',
+                'url'  => 'netlan/admin/switchs',
+                'icon' => 'fas fa-fw fa-random',
+            ],
+            [
+                'can'  => 'admin.ports.index',
+                'text' => 'Puertos Patch Panel',
+                'url'  => 'netlan/admin/ports',
+                'icon' => 'fas fa-fw fa-plug',
+            ],
+            [
+                'text' => 'Puertos Switch',
+                'url'  => 'netlan/admin/switchs',
+                'icon' => 'fas fa-fw fa-tty',
+            ],
+            [
+                'can'  => 'admin.connections.index',
+                'text' => 'Conexiones',
+                'url'  => 'netlan/admin/connections',
+                'icon' => 'fas fa-fw fa-project-diagram',
+            ],
+        ],
+    ],
+    [
+        'text'    => 'Mikrotik',
+        'icon'    => 'fas fa-microchip',
+        'can'     => 'admin.configuracion.index',
+        'submenu' => [
+            [
+                'text' => 'SNMP',
+                'url'  => 'admin/snmp/',
+                'icon' => 'fas fa-fw fa-satellite-dish',
+            ],
+            [
+                'text' => 'Clientes Internet',
+                'url'  => 'admin/mikrotik/clientes',
+                'icon' => 'fas fa-fw fa-wifi',
+            ],
+            [
+                'text' => 'Clientes Conectados',
+                'url'  => 'admin/mikrotik/conectados',
+                'icon' => 'fas fa-fw fa-signal',
+            ],
+            [
+                'text' => 'Diagrama de Red',
+                'url'  => 'admin/diagramas/red',
+                'icon' => 'fas fa-fw fa-sitemap',
+            ],
+        ],
+    ],
+    [
+        'text'    => 'BTR',
+        'icon'    => 'fas fa-bus',
+        'submenu' => [
+            [
+                'can'  => 'admin.inventarioBTR.dashboard',
+                'text' => 'Dashboard BTR',
+                'url'  => 'admin/inventarioBTR/dashboard',
+                'icon' => 'fas fa-fw fa-chart-line',
+            ],
+            [
+                'can'  => 'admin.inventarioBTR.index',
+                'text' => 'Inventario BTR',
+                'url'  => 'admin/inventarioBTR',
+                'icon' => 'fas fa-fw fa-boxes',
+            ],
+            [
+                'can'  => 'admin.inventarioBTR.mapas_btr',
+                'text' => 'Mapas BTR',
+                'url'  => 'admin/inventarioBTR/mapas_btr',
+                'icon' => 'fas fa-fw fa-map-marked-alt',
+            ],
+        ],
+    ],
+
+    // --- OPERACIONES Y PRODUCTIVIDAD ---
+    ['header' => 'OPERACIONES'],
+
+    [
+        'text' => 'Agenda Semanal',
+        'url'  => 'produccion/admin/agendas',
+        'icon' => 'far fa-fw fa-calendar-alt',
+    ],
+    [
+        'text'    => 'Gastos de Viaje',
+        'icon'    => 'fas fa-fw fa-plane-departure',
+        'submenu' => [
+            [
+                'text' => 'Historial Liquidaciones',
+                'url'  => 'admin/liquidaciones',
+                'icon' => 'fas fa-fw fa-history',
+            ],
+            [
+                'text' => 'Liquidaciones',
+                'url'  => 'admin/liquidaciones/liquidacion',
+                'icon' => 'fas fa-fw fa-file-invoice-dollar',
+            ],
+            [
+                'text' => 'Cálculo de Viáticos',
+                'url'  => 'admin/viaticos/create',
+                'icon' => 'fas fa-fw fa-calculator',
+            ],
+            [
+                'text' => 'Solicitar Viático',
+                'url'  => 'admin/viaticos/solicitud',
+                'icon' => 'fas fa-fw fa-paper-plane',
+            ],
+        ],
+    ],
+    [
+        'text' => 'Tickets',
+        'url'  => 'admin/tickets/dashboard',
+        'icon' => 'fas fa-fw fa-ticket-alt',
+    ],
+    [
+        'can'   => 'admin.brands.index',
+        'text'  => 'Drivers y Manuales',
+        'icon'  => 'fas fa-fw fa-download',
+        'route' => 'admin.brands.index',
+    ],
+    [
+        'text'    => 'Productividad',
+        'icon'    => 'fas fa-fw fa-tasks',
+        'submenu' => [
+            [
+                'can'  => 'admin.marcaciones.index',
+                'text' => 'Asistencia',
+                'url'  => 'admin/marcaciones',
+                'icon' => 'fas fa-fw fa-clock',
+            ],
+            [
+                'can'  => 'admin.viaticos.index',
+                'text' => 'Viáticos',
+                'url'  => 'admin/viaticos',
+                'icon' => 'fas fa-fw fa-wallet',
+            ],
+        ],
+    ],
+
+    // --- FINANZAS Y OTROS ---
+    ['header' => 'GESTIÓN Y ANEXOS'],
+
+    [
+        'text'    => 'Finanzas',
+        'icon'    => 'fas fa-fw fa-chart-pie',
+        'submenu' => [
+            [
+                'text' => 'Dashboard',
+                'url'  => 'admin/finanzas/dashboard',
+                'icon' => 'fas fa-fw fa-tachometer-alt',
+            ],
+            [
+                'text' => 'Ingresos',
+                'url'  => 'admin/finanzas/ingresos',
+                'icon' => 'fas fa-fw fa-hand-holding-usd',
+            ],
+            [
+                'text' => 'Egresos',
+                'url'  => 'admin/finanzas/egresos',
+                'icon' => 'fas fa-fw fa-file-export',
+            ],
+        ],
+    ],
+    [
+        'text'    => 'Anexos',
+        'icon'    => 'fas fa-fw fa-folder-plus',
+        'submenu' => [
+            [
+                'can'  => 'admin.alumnos.importar',
+                'text' => 'Importar Excel',
+                'url'  => 'admin/alumnos/importar',
+                'icon' => 'fas fa-fw fa-file-excel',
+            ],
+            [
+                'can'  => 'admin.alumnos.crey',
+                'text' => 'Importar CREY',
+                'url'  => 'admin/alumnos/crey',
+                'icon' => 'fas fa-fw fa-file-import',
+            ],
+            [
+                'can'  => 'admin.alumnos.foto',
+                'text' => 'Preparar Foto',
+                'url'  => 'admin/alumnos/foto',
+                'icon' => 'fas fa-fw fa-camera',
+            ],
+            [
+                'can'  => 'admin.apuntes.foto',
+                'text' => 'Apuntes',
+                'url'  => 'admin/apuntes',
+                'icon' => 'fas fa-fw fa-sticky-note',
+            ],
+            [
+                'can'  => 'admin.debts.dashboard-finanzas',
+                'text' => 'Créditos',
+                'url'  => 'admin/debts/dashboard-finanzas',
+                'icon' => 'fas fa-fw fa-credit-card',
+            ],
+        ],
+    ],
+
+    // --- CONFIGURACIÓN DE CUENTA ---
+    ['header' => 'CUENTA'],
+
+    [
+        'text' => 'Mi Perfil',
+        'url'  => 'admin/settings',
+        'icon' => 'fas fa-fw fa-user-cog',
+    ],
+],
 
     ['header' => 'labels'],
 

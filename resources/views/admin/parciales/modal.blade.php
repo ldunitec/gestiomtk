@@ -183,7 +183,8 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label>Logo</label>
-                            <input name="logo_url " class="form-control" placeholder="URL de logo" required>
+                            {{-- <input name="logo_url " class="form-control" placeholder="URL de logo" required> --}}
+                            <input type="file" name="logo_url" class="form-control" accept="image/*">
                         </div>
                     </div>
                 </div>

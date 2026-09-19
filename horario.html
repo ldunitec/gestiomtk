@@ -1,0 +1,233 @@
+#include <WiFi.h> #include <WebServer.h> #include <Preferences.h> #include <ESP32Time.h> #include <Wire.h> #include
+          "RTClib.h" #include "time.h" // ================= ESTRUCTURAS Y OBJETOS ================= struct Horario { int
+          hora; int minuto; }; WebServer server(80); Preferences prefs; ESP32Time rtcInternal; // RTC Interno (para
+          manejo rápido) RTC_DS3231 rtcExternal; // RTC Físico (Persistencia real) // ================= PINES Y ESTADOS
+          ================= const int timbrePin = 13; const int ledPin = 2; bool timbreActivo = false; unsigned long
+          tiempoInicioTimbre = 0; int duracionTimbre = 5; // Variables de Red y Tiempo const char* ntpServer =
+          "pool.ntp.org"; const long gmtOffset_sec = -21600; // Honduras UTC-6 const int daylightOffset_sec = 0; const
+          char* ap_ssid = "Timbre_LeonAlvarado"; const char* ap_pass = "L34567A"; String www_username, www_password;
+          bool modoAP = false; unsigned long ultimoIntentoWiFi = 0; const unsigned long intervaloReconexion = 30000; //
+          Horarios Horario hLunes[30], hSemana[30], hNoche[30]; int tLunes = 0, tSemana = 0, tNoche = 0; int
+          ultimoMinuto = -1; // ================= FUNCIONES DE TIEMPO Y RTC ================= void sincronizarHora() {
+          // 1. Intentar obtener hora de Internet configTime(gmtOffset_sec, daylightOffset_sec, ntpServer); struct tm
+          timeinfo; if (getLocalTime(&timeinfo)) { Serial.println("✅ Hora obtenida de NTP"); // Actualizar RTC Físico
+          rtcExternal.adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour,
+          timeinfo.tm_min, timeinfo.tm_sec)); // Sincronizar RTC Interno rtcInternal.setTimeStruct(timeinfo); } else {
+          Serial.println("⚠️ No hay NTP. Usando RTC físico."); DateTime now = rtcExternal.now();
+          rtcInternal.setTime(now.second(), now.minute(), now.hour(), now.day(), now.month(), now.year()); } } //
+          ================= FUNCIONES DE TIMBRE ================= void activarTimbre() { if (!timbreActivo) {
+          digitalWrite(timbrePin, HIGH); digitalWrite(ledPin, HIGH); tiempoInicioTimbre = millis(); timbreActivo = true;
+          Serial.println("🔔 Timbre Sonando..."); } } void actualizarTimbre() { if (timbreActivo && (millis() -
+          tiempoInicioTimbre >= (duracionTimbre * 1000))) { digitalWrite(timbrePin, LOW); digitalWrite(ledPin, LOW);
+          timbreActivo = false; Serial.println("🔕 Timbre Apagado."); } } // ================= PERSISTENCIA NVS
+          ================= void guardarHorarios(String tipo) { String datos = ""; int total = (tipo == "lunes") ?
+          tLunes : (tipo == "semana" ? tSemana : tNoche); Horario* arr = (tipo == "lunes") ? hLunes : (tipo == "semana"
+          ? hSemana : hNoche); for(int i = 0; i < total; i++) { datos +=String(arr[i].hora) + ":" +
+            String(arr[i].minuto) + (i < total - 1 ? "," : "" ); } prefs.putString(tipo.c_str(), datos); } void
+            cargarHorarios() { String tipos[]={"lunes", "semana" , "noche" }; tLunes=0; tSemana=0; tNoche=0; for(String
+            t : tipos) { String data=prefs.getString(t.c_str(), "" ); if(data=="" ) continue; int pos=0;
+            while(data.length()> 0) { int coma = data.indexOf(','); String item = (coma == -1) ? data :
+            data.substring(0, coma); int puntos = item.indexOf(':'); int h = item.substring(0, puntos).toInt(); int m =
+            item.substring(puntos + 1).toInt(); if(t == "lunes" && tLunes < 30) { hLunes[tLunes].hora=h;
+              hLunes[tLunes++].minuto=m; } else if(t=="semana" && tSemana < 30) { hSemana[tSemana].hora=h;
+              hSemana[tSemana++].minuto=m; } else if(t=="noche" && tNoche < 30) { hNoche[tNoche].hora=h;
+              hNoche[tNoche++].minuto=m; } if(coma==-1) break; data=data.substring(coma + 1); } } }
+              //=================SEGURIDAD Y RED=================bool auth() { if
+              (!server.authenticate(www_username.c_str(), www_password.c_str())) { server.requestAuthentication();
+              return false; } return true; } void conectarWiFi() { String ssid=prefs.getString("wifi_ssid", "Iphone" );
+              String pass=prefs.getString("wifi_pass", "12365412" ); WiFi.mode(WIFI_STA); WiFi.begin(ssid.c_str(),
+              pass.c_str()); int intentos=0; while (WiFi.status() !=WL_CONNECTED && intentos < 15) { delay(500);
+              Serial.print("."); intentos++; } if (WiFi.status()==WL_CONNECTED) { Serial.println("\n✅ WiFi Conectado!");
+              sincronizarHora(); modoAP=false; } else { WiFi.mode(WIFI_AP); WiFi.softAP(ap_ssid, ap_pass); modoAP=true;
+              Serial.println("\n⚠️ Modo AP Activado (192.168.4.1)"); // Sincronizar desde RTC físico ya que no hay WiFi
+              DateTime now=rtcExternal.now(); rtcInternal.setTime(now.second(), now.minute(), now.hour(), now.day(),
+              now.month(), now.year()); } } //=================RUTAS DEL SERVIDOR (RESUMIDO)=================void
+              handleRoot() { if (!auth()) return; String html=R"rawliteral( <!DOCTYPE html>
+              <html>
+
+              <head>
+                <meta name="viewport" content="width=device-width,initial-scale=1">
+                <meta charset="utf-8">
+                <style>
+                  body {
+                    font-family: sans-serif;
+                    background: #0f172a;
+                    color: white;
+                    text-align: center;
+                    margin: 0;
+                    padding: 10px;
+                  }
+
+                  .jornada {
+                    background: #1e293b;
+                    border-radius: 15px;
+                    margin: 15px 0;
+                    padding: 10px;
+                    border-top: 4px solid #38bdf8;
+                  }
+
+                  .cols {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 10px;
+                  }
+
+                  .col {
+                    flex: 1;
+                    background: #0f172a;
+                    padding: 10px;
+                    border-radius: 8px;
+                    min-height: 40px;
+                  }
+
+                  .col-t {
+                    font-size: 0.7em;
+                    color: #94a3b8;
+                    margin-bottom: 5px;
+                    font-weight: bold;
+                  }
+
+                  .time-tag {
+                    background: #334155;
+                    margin: 4px 0;
+                    padding: 5px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 1.1em;
+                  }
+
+                  button {
+                    padding: 10px;
+                    margin: 5px;
+                    border: none;
+                    border-radius: 10px;
+                    color: white;
+                    cursor: pointer;
+                    font-weight: bold;
+                  }
+
+                  .add {
+                    background: #22c55e;
+                  }
+
+                  .top {
+                    background: #38bdf8;
+                  }
+
+                  .del {
+                    background: #ef4444;
+                  }
+
+                  #reloj {
+                    font-size: 2.2em;
+                    color: #38bdf8;
+                    margin: 10px 0;
+                    font-weight: bold;
+                  }
+                </style>
+              </head>
+
+              <body>
+                <h3>INSTITUTO LEON ALVARADO</h3>
+                <div id="reloj">00:00:00</div> <button class="top"
+                  onclick="location.href='/config'">Configuración</button> <button class="top"
+                  style="background:#f59e0b" onclick="fetch('/probar')">Probar Timbre</button>
+                <div class="jornada">
+                  <div style="font-weight:bold">MATUTINA</div>
+                  <div class="cols">
+                    <div class="col">
+                      <div class="col-t">LUNES</div>
+                      <div id="m-lun"></div>
+                    </div>
+                    <div class="col">
+                      <div class="col-t">MARTES-VIERNES</div>
+                      <div id="m-sem"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="jornada" style="border-top-color:#f59e0b">
+                  <div style="font-weight:bold">VESPERTINA</div>
+                  <div class="cols">
+                    <div class="col">
+                      <div class="col-t">LUNES</div>
+                      <div id="v-lun"></div>
+                    </div>
+                    <div class="col">
+                      <div class="col-t">MARTES-VIERNES</div>
+                      <div id="v-sem"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="jornada" style="border-top-color:#ef4444">
+                  <div style="font-weight:bold">NOCTURNA</div>
+                  <div class="col">
+                    <div class="col-t">LUNES A VIERNES</div>
+                    <div id="n-todo"></div>
+                  </div>
+                </div>
+                <div class="jornada" style="border-top:none">
+                  <h4>Añadir Horario</h4> <select id="tipoA">
+                    <option value="lunes">Lunes</option>
+                    <option value="semana">Mar a Jue</option>
+                    <option value="noche">Noche (Todo)</option>
+                  </select> <input type="time" id="horaA"><button class="add" onclick="add()">+</button> <br><br><button
+                    class="del" onclick="if(confirm('¿Borrar todo?'))location.href='/limpiar'">BORRAR TODO</button>
+                </div>
+                <script> function upReloj() { fetch('/getHora').then(r => r.text()).then(t => { document.getElementById('reloj').innerText = t; }); } setInterval(upReloj, 1000); // --- CIERRE DE SESIÓN POR INACTIVIDAD --- let timeout; function resetTimer(){ clearTimeout(timeout); timeout = setTimeout(()=>{ alert("Sesión expirada"); location.href="/logout"; }, 30000); // 5 min } window.onload=resetTimer; window.onmousemove=resetTimer; window.onkeypress=resetTimer; function load(){ fetch('/horarios').then(r=>r.json()).then(data=>{ const ids = ["m-lun","m-sem","v-lun","v-sem","n-todo"]; ids.forEach(id=>document.getElementById(id).innerHTML=""); data.forEach(i=>{ const hDec = i.h + (i.m/60); const tStr = <div class="time-tag">${i.h}:${i.m<10?'0':''}${i.m}</div>; if(hDec <= 12.0){ document.getElementById(i.t==='lunes'?'m-lun':'m-sem').innerHTML+=tStr; } else if(hDec < 18.0){ document.getElementById(i.t==='lunes'?'v-lun':'v-sem').innerHTML+=tStr; } else if(hDec >= 18.0 && hDec <= 21.5){ document.getElementById('n-todo').innerHTML+=tStr; } }); }); } function add(){ let t=document.getElementById('tipoA').value; let v=document.getElementById('horaA').value; if(!v)return; let p=v.split(":"); fetch('/agregar',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:tipo=${t}&h=${p[0]}&m=${p[1]}}).then(load); } load(); </script>
+              </body>
+
+              </html>)rawliteral"; server.send(200, "text/html", html); } // ================= SETUP =================
+              void setup() { Serial.begin(115200); pinMode(timbrePin, OUTPUT); pinMode(ledPin, OUTPUT); Wire.begin(21,
+              22); if (!rtcExternal.begin()) { Serial.println("❌ No se encontro el DS3231"); } prefs.begin("timbre",
+              false); www_username = prefs.getString("user", "admin"); www_password = prefs.getString("pass", "9509");
+              duracionTimbre = prefs.getInt("duracion", 5); cargarHorarios(); conectarWiFi(); // Handlers server.on("/",
+              handleRoot); server.on("/getHora", []() { server.send(200, "text/plain", rtcInternal.getTime("%H:%M:%S"));
+              }); server.on("/probar", []() { activarTimbre(); server.send(200, "text/plain", "ok"); });
+              server.on("/logout", []() { String html = "<html>
+
+              <body style='background:#0f172a;color:white;text-align:center;font-family:sans-serif;padding-top:50px;'>";
+                html += "<h2>Sesión cerrada</h2>"; html += "<button onclick=\"location.href='/' \"
+                  style='padding:15px;background:#38bdf8;color:white;border:none;border-radius:10px;cursor:pointer;'>IR
+                  AL INICIO / RE-CONECTAR</button>"; html += "</body>
+
+              </html>"; server.send(401, "text/html", html); }); server.on("/horarios", []() { String j = "["; auto
+              addJson = [&](Horario* arr, int total, String tipo) { for(int i=0; i<total; i++) { if (j !="[" ) j +="," ;
+                j +="{\" h\":" + String(arr[i].hora) + ",\" m\":" + String(arr[i].minuto) + ",\" t\":\"" + tipo + "\"
+                }"; } }; addJson(hLunes, tLunes, "lunes" ); addJson(hSemana, tSemana, "semana" ); addJson(hNoche,
+                tNoche, "noche" ); j +="]" ; server.send(200, "application/json" , j); }); server.on("/agregar",
+                HTTP_POST, []() { String t=server.arg("tipo"); int h=server.arg("h").toInt(); int
+                m=server.arg("m").toInt(); if (t=="lunes" && tLunes < 30) { hLunes[tLunes].hora=h;
+                hLunes[tLunes++].minuto=m; } else if (t=="semana" && tSemana < 30) { hSemana[tSemana].hora=h;
+                hSemana[tSemana++].minuto=m; } else if (t=="noche" && tNoche < 30) { hNoche[tNoche].hora=h;
+                hNoche[tNoche++].minuto=m; } guardarHorarios(t); server.send(200, "ok" ); }); server.on("/limpiar", []()
+                { prefs.remove("lunes"); prefs.remove("semana"); prefs.remove("noche"); tLunes=0; tSemana=0; tNoche=0;
+                server.sendHeader("Location", "/" ); server.send(303); }); server.on("/config", []() { if (!auth())
+                return; String
+                html="<html><body style='font-family:sans-serif;text-align:center;background:#0f172a;color:white;'>" ;
+                html
+                +="<h2>CONFIGURACION</h2><form action='/guardarConfig' method='POST' style='display:inline-block;background:#1e293b;padding:20px;border-radius:15px;'>"
+                ; html +="WiFi: <input name='ssid' value='" +prefs.getString("wifi_ssid")+"'><br><br>"; html += "Pass:
+                <input name='wp' type='password' value='"+prefs.getString("wifi_pass")+"'><br><br>"; html += "User Web:
+                <input name='usr' value='"+www_username+"'><br><br>"; html += "Pass Web: <input name='pwd'
+                  type='password' value='"+www_password+"'><br><br>"; html += "Duración Timbre (seg): <input name='dur'
+                  type='number' value='"+String(duracionTimbre)+"'><br><br>"; html += "<button
+                  style='background:#22c55e;color:white;padding:10px;border:none;border-radius:5px;width:100%'>GUARDAR Y
+                  REINICIAR</button></form>
+                </body>
+
+                </html>"; server.send(200, "text/html", html); }); server.on("/guardarConfig", HTTP_POST, []() { if
+                (!auth()) return; prefs.putInt("duracion", server.arg("dur").toInt()); server.send(200, "Guardado");
+                delay(1000); ESP.restart(); }); server.begin(); } // ================= LOOP PRINCIPAL =================
+                void loop() { server.handleClient(); actualizarTimbre(); // Reconexión WiFi y Resincronización NTP cada
+                hora if (!modoAP && WiFi.status() != WL_CONNECTED) { if (millis() - ultimoIntentoWiFi >=
+                intervaloReconexion) { WiFi.reconnect(); ultimoIntentoWiFi = millis(); } } // Verificación de Horarios
+                int h = rtcInternal.getHour(true); int m = rtcInternal.getMinute(); int d = rtcInternal.getDayofWeek();
+                // 1: Lun, 2: Mar... if (m != ultimoMinuto) { bool sonar = false; if (d == 1) { // Lunes for (int i=0; i
+                <tLunes; i++) if (h==hLunes[i].hora && m==hLunes[i].minuto) sonar=true; } if (d>= 2 && d <= 4) { //
+                    Martes a Jueves for (int i=0; i<tSemana; i++) if (h==hSemana[i].hora && m==hSemana[i].minuto)
+                    sonar=true; } if (d>= 1 && d <= 5) { // Lunes a Viernes (Noche/Todo) for (int i=0; i<tNoche; i++) if
+                      (h==hNoche[i].hora && m==hNoche[i].minuto) sonar=true; } if (sonar) activarTimbre();
+                      ultimoMinuto=m; // Cada media noche (o cada hora), podrías forzar una sincronización con el RTC
+                      físico // para evitar derivas del reloj interno del ESP32. if (m==0) { DateTime
+                      now=rtcExternal.now(); rtcInternal.setTime(now.second(), now.minute(), now.hour(), now.day(),
+                      now.month(), now.year()); } } }

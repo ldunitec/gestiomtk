@@ -11,12 +11,32 @@
             <div class="card card-outline card-primary">
                 <div class="card-header">
                     <h3 class="card-title">Permisos registrados</h3>
+
+                    <div>
+                        @if (session('success'))
+                            <div class="alert alert-success">
+                                <strong>✅ {{ session('success') }}</strong>
+
+                                @if (session('output'))
+                                    <pre class="mt-2 p-2 bg-light border rounded">
+{{ session('output') }}
+            </pre>
+                                @endif
+                            </div>
+                        @endif
+
+                        @if (session('error'))
+                            <div class="alert alert-danger">
+                                ❌ {{ session('error') }}
+                            </div>
+                        @endif
+                    </div>
                     <!-- /.card-tools -->
                     <div class="card-tools">
                         <form action="{{ route('admin.generate-permissions') }}" method="GET">
                             @csrf
                             <button type="submit" class="btn btn-success">
-                                Actualizar permisos 
+                                Actualizar permisos
                             </button>
                         </form>
                     </div>

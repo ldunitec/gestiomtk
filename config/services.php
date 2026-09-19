@@ -33,12 +33,12 @@ return [
 
        'todoist' => [
         'token' => env('TODOIST_TOKEN'),
-        'project_id' => env('TODOIST_PROJECT_ID'),
+        'project_id' => env('TODOIST_PROJECT_ID_PERSONAL'),
         'usuarios' => [
             env('TODOIST_LD'),
-            env('TODOIST_KG'),
-            env('TODOIST_HM'),
-            env('TODOIST_CL'),
+            // env('TODOIST_KG'),
+            // env('TODOIST_HM'),
+            // env('TODOIST_CL'),
         ],
     ],
     

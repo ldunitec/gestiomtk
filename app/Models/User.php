@@ -50,4 +50,9 @@ class User extends Authenticatable
     public function empleado(){
         return $this->belongsTo(Empleado::class);
     }
+
+    public function asignacion()
+{
+    return $this->hasMany(\App\Models\Asignacion::class,'user_id');
+}
 }

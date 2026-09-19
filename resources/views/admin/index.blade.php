@@ -30,7 +30,7 @@
                 <img src="{{ url('/img/administrativo.gif') }}" width="70px" alt="">
                 <div class="info-box-content">
                     <span class="info-box-text"><b>administrativos registrados</b></span>
-                    <span class="info-box-number">{{ $total_administrativo }} administrativos</span>
+                    <span class="info-box-number">{{ $total_roles  }} administrativos</span>
                 </div>
                 <!-- /.info-box-content -->
             </div>
@@ -44,35 +44,20 @@
                     <img src="{{ url('/img/calendario.gif') }}" width="70px" alt="">
                     <div class="info-box-content">
                         <span class="info-box-text"><b>Agenda</b></span>
-                        <span class="info-box-number">{{ $total_administrativo }} </span>
+                        <span class="info-box-number"></span>
                     </div>
                     <!-- /.info-box-content -->
                 </div>
                 <!-- /.info-box -->
             </a>
         </div>
-
         <div class="col-md-3 col-sm-6 col-12">
             <a href="{{ url('admin/marcaciones') }}">
                 <div class="info-box zoomp">
                     <img src="{{ url('/img/aistencia.gif') }}" width="70px" alt="">
                     <div class="info-box-content">
                         <span class="info-box-text"><b>Asistencia</b></span>
-                        <span class="info-box-number">{{ $total_administrativo }} </span>
-                    </div>
-                    <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-            </a>
-        </div>
-
-        <div class="col-md-3 col-sm-6 col-12">
-            <a href="{{ url('admin/inventarioBTR') }}">
-                <div class="info-box zoomp">
-                    <img src="{{ url('/img/btr.gif') }}" width="70px" alt="">
-                    <div class="info-box-content">
-                        <span class="info-box-text"><b>BTR</b></span>
-                        {{-- <span class="info-box-number">{{ $total_administrativo }} </span> --}}
+                        <span class="info-box-number"> </span>
                     </div>
                     <!-- /.info-box-content -->
                 </div>

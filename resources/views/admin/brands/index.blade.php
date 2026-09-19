@@ -39,14 +39,15 @@
                 </div>
 
                 <div class="icon">
-                    <img src="{{ $brand->logo_url }}"
+                    {{-- <img src="{{ $brand->logo_url }}"
                          alt="{{ $brand->name }}"
-                         style="max-width:120px;">
+                         style="max-width:120px;"> --}}
+                         <img src="{{ asset($brand->logo_url) }}" width="100">
                 </div>
 
-                <div class="small-box-footer">
+                {{-- <div class="small-box-footer">
                     Más Información <i class="fas fa-arrow-circle-right"></i>
-                </div>
+                </div> --}}
             </div>
         </a>
     </div>
@@ -60,27 +61,50 @@
 
 @section('css')
     <style>
-        .small-box {
-            height: 180px;
-            /* altura fija */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+       .small-box {
+    height: 180px;              /* altura fija */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;           /* evita que el contenido agrande el card */
+}
 
-        .small-box .inner {
-            flex: 1;
-        }
+.small-box .inner {
+    flex: 1;
+    overflow: hidden;
+}
 
-        .small-box .icon {
-            bottom: 10px;
-            top: auto;
-        }
+.small-box h3 {
+    font-size: 1.1rem;
+    white-space: nowrap;        /* evita salto de línea */
+    overflow: hidden;
+    text-overflow: ellipsis;    /* ... si el texto es largo */
+}
 
-        .small-box img {
-            max-height: 80px;
-            object-fit: contain;
-        }
+.small-box p {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;      /* máximo 2 líneas */
+    -webkit-box-orient: vertical;
+}
+
+.small-box .icon {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+}
+
+.small-box img {
+    max-height: 80px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.ribbon-wrapper {
+    z-index: 10;
+}
     </style>
 
 @stop

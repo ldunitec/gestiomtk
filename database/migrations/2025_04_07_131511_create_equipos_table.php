@@ -20,7 +20,7 @@ return new class extends Migration {
             // Datos de red
             $table->string('ip_address')->nullable();
             $table->string('mac_address')->nullable();
-            $table->string('puerto_patch')->nullable();
+            $table->string('tipo')->nullable();
 
             // Relación con otros modelos (opcional)
             $table->foreignId('empleado_id')->nullable()->constrained()->onDelete('set null'); // responsable
@@ -31,6 +31,7 @@ return new class extends Migration {
             // Especificaciones del equipo
             $table->enum('antivirus', ['Activo', 'Inactivo'])->default('Inactivo');
             $table->enum('estado', ['Activo', 'Inactivo'])->default('Activo');
+            $table->boolean('alertado')->default(0);
 
             //agregar para usar estos equipo en el diagrama de res
             $table->string('x')->default('50px');

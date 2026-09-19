@@ -8,10 +8,12 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
 
-    protected function schedule(Schedule $schedule)
-    {
-        $schedule->command('anviz:attendance')->everyMinute();
-    }
+  protected function schedule(Schedule $schedule)
+{
+    // $schedule->command('generate:subscriptions')->daily();
+    $schedule->command('monitorear:equipos')->everyMinute();
+    // $schedule->command('monitorear:equipos')->daily();
+}
 
     /**
      * Define the application's command schedule.
