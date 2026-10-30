@@ -1,58 +1,52 @@
 @extends('adminlte::page')
-
 @section('title', 'Listado de Equipos')
-
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="m-0 font-weight-bold text-dark">Listado de Equipos</h1>
-        <div class="btn-group" role="group" aria-label="Acciones de Creación">
-            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-toggle="modal" data-target="#marcaModal">
-                <i class="fas fa-tag mr-1"></i> Nueva Marca
-            </button>
-            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-toggle="modal" data-target="#createModal">
-                <i class="fas fa-cube mr-1"></i> Nuevo Modelo
-            </button>
-            <button type="button" class="btn btn-primary btn-sm shadow-sm" data-toggle="modal" data-target="#crearEquipoModal">
-                <i class="fas fa-desktop mr-1"></i> Nuevo Equipo
-            </button>
-        </div>
-    </div>
-    <hr class="mt-2 mb-3">
+    <h1>Listado de equipos</h1>
 @stop
-
 @section('content')
-    {{-- Incluye modales generales de equipos --}}
-    @include('netlan::admin.equipos.parciales.modal')
-
-    <div class="row">
-        {{-- Tabla de Equipos Activos --}}
-        <div class="col-lg-8 col-md-12">
-            <div class="card card-outline card-primary shadow-sm">
-                <div class="card-header border-bottom-0">
-                    <h3 class="card-title text-bold text-primary">
-                        <i class="fas fa-check-circle mr-2"></i> Equipos Activos
-                    </h3>
-                </div>
-                
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table id="equipoActivo" class="table table-bordered table-hover table-striped table-sm w-100">
-                            <thead class="thead-light">
+    @php
+        $activeCount = count($activos);
+        $inactiveCount = count($inActivos);
+        $equipmentTotal = $activeCount + $inactiveCount;
+    @endphp
+    <div class="net-equipment">
+        <header class="equipment-intro">
+            <div><div class="equipment-eyebrow">MEGATK · Infraestructura de red</div><h2>Inventario de equipos</h2><p>Consulta responsables, direcciones de red y estado de los equipos.</p></div>
+            <div class="equipment-toolbar">
+                <a href="{{ route('netlan.admin.equipos.pdf') }}" target="_blank" rel="noopener" class="btn equipment-pdf"><i class="fas fa-file-pdf" aria-hidden="true"></i> Imprimir PDF</a>
+                <button type="button" class="btn equipment-secondary" data-toggle="modal" data-target="#marcaModal"><i class="fas fa-tag" aria-hidden="true"></i> Nueva marca</button>
+                <button type="button" class="btn equipment-secondary" data-toggle="modal" data-target="#createModal"><i class="fas fa-cube" aria-hidden="true"></i> Nuevo modelo</button>
+                <button type="button" class="btn btn-primary equipment-primary" data-toggle="modal" data-target="#crearEquipoModal"><i class="fas fa-plus" aria-hidden="true"></i> Nuevo equipo</button>
+            </div>
+        </header>
+        <div class="equipment-metrics">
+            <div class="equipment-metric"><span class="metric-icon"><i class="fas fa-desktop" aria-hidden="true"></i></span><div><strong>{{ $equipmentTotal }}</strong><span>Equipos registrados</span></div></div>
+            <div class="equipment-metric metric-active"><span class="metric-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></span><div><strong>{{ $activeCount }}</strong><span>Equipos activos</span></div></div>
+            <div class="equipment-metric metric-inactive"><span class="metric-icon"><i class="fas fa-pause-circle" aria-hidden="true"></i></span><div><strong>{{ $inactiveCount }}</strong><span>Equipos inactivos</span></div></div>
+        </div>
+        <section class="equipment-card active-card" aria-labelledby="active-title">
+            <header class="equipment-card-header"><div><h3 id="active-title"><span class="equipment-dot"></span>Equipos activos</h3><p>Asignación, red y protección de los equipos activos.</p></div><span class="equipment-count">{{ $activeCount }} registros</span></header>
+            @if ($activeCount === 0)
+                <div class="equipment-empty"><i class="fas fa-info-circle" aria-hidden="true"></i> No hay equipos activos registrados.</div>
+            @endif
+            <div class="equipment-table-scroll" role="region" tabindex="0" aria-label="Tabla de equipos activos; desplazamiento horizontal">
+                <table id="equipoActivo" class="table table-bordered table-hover table-striped table-sm equipment-table">
+                            <thead class="">
                                 <tr>
-                                    <th class="text-center" style="width: 50px;">Nro</th>
-                                    <th>Asignado</th>
-                                    <th>IP Address</th>
-                                    <th>MAC Address</th>
-                                    <th class="text-center">Nomb_pc</th>
-                                    <th class="text-center">Tipo</th>
-                                    <th class="text-center">Estado</th>
-                                    <th class="text-center">Antivirus</th>
-                                    <th class="text-center">Actualizado</th>
-                                    <th class="text-center" style="width: 100px;">Acción</th>
+                                    <th scope="col" class="text-center" style="width: 50px;">N.º</th>
+                                    <th scope="col">Asignado a</th>
+                                    <th scope="col">Dirección IP</th>
+                                    <th scope="col">Dirección MAC</th>
+                                    <th scope="col" class="text-center">Equipo</th>
+                                    <th scope="col" class="text-center">Tipo</th>
+                                    <th scope="col" class="text-center">Antivirus</th>
+                                    <th scope="col" class="text-center">Estado</th>
+                                    <th scope="col" class="text-center">Actualizado</th>
+                                    <th scope="col" class="text-center" style="width: 100px;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($activos as $equipo)
+                                @foreach ($activos as $equipo)
                                     <tr>
                                         <td class="text-center align-middle font-weight-bold text-secondary">
                                             {{ $loop->iteration }}
@@ -60,30 +54,30 @@
                                         <td class="align-middle">
                                             {{ $equipo->empleado ? $equipo->empleado->nombres . ' ' . $equipo->empleado->apellidos : 'Sin asignación' }}
                                         </td>
-                                        <td class="align-middle"><code>{{ $equipo->ip_address ?? 'N/A' }}</code></td>
-                                        <td class="align-middle"><code>{{ $equipo->mac_address ?? 'N/A' }}</code></td>
-                                        <td class="align-middle"><code>{{ $equipo->nombre ?? 'N/A' }}</code></td>
+                                        <td class="align-middle"><code>{{ $equipo->ip_address ?: '—' }}</code></td>
+                                        <td class="align-middle"><code>{{ $equipo->mac_address ?: '—' }}</code></td>
+                                        <td class="align-middle"><code>{{ $equipo->nombre ?: '—' }}</code></td>
                                         <td class="text-center align-middle">
                                             <span class="badge badge-secondary">{{ $equipo->tipo }}</span>
                                         </td>
-                                        <td class="text-center align-middle">{{ $equipo->antivirus ?? 'N/A' }}</td>
+                                        <td class="text-center align-middle">{{ $equipo->antivirus ?: '—' }}</td>
                                         <td class="text-center align-middle">
                                             <button type="button" 
                                                     class="btn btn-xs toggle-estado {{ $equipo->estado == 'Activo' ? 'btn-success' : 'btn-danger' }}"
-                                                    data-id="{{ $equipo->id }}">
+                                                    data-id="{{ $equipo->id }}" aria-label="Cambiar estado de {{ $equipo->nombre }}">
                                                 {{ $equipo->estado == 'Activo' ? 'Activo' : 'Inactivo' }}
                                             </button>
                                         </td>
                                         <td class="text-center align-middle">
                                             <span class="badge badge-light border">
-                                                {{ \Carbon\Carbon::parse($equipo->updated_at)->translatedFormat('M Y') }}
+                                                {{ $equipo->updated_at ? \Carbon\Carbon::parse($equipo->updated_at)->format('d/m/Y H:i') : '—' }}
                                             </span>
                                         </td>
                                         <td class="text-center align-middle">
                                             <div class="btn-group btn-group-sm" role="group">
                                                 <a href="{{ url('netlan/admin/equipos/' . $equipo->id . '/edit') }}"
                                                    class="btn btn-outline-success" 
-                                                   title="Editar Equipo">
+                                                   title="Editar equipo" aria-label="Editar equipo {{ $equipo->nombre }}">
                                                     <i class="fas fa-pencil-alt"></i>
                                                 </a>
                                                 <form action="{{ url('netlan/admin/equipos', $equipo->id) }}"
@@ -91,107 +85,88 @@
                                                       class="d-inline form-eliminar">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar Equipo">
+                                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar equipo" aria-label="Eliminar equipo {{ $equipo->nombre }}">
                                                         <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
                                             </div>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">
-                                            <i class="fas fa-info-circle mr-1"></i> No hay equipos activos registrados.
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
-                    </div>
-                </div>
             </div>
-        </div>
-
-        {{-- Tabla de Equipos Inactivos --}}
-        <div class="col-lg-4 col-md-12">
-            <div class="card card-outline card-danger shadow-sm">
-                <div class="card-header border-bottom-0">
-                    <h3 class="card-title text-bold text-danger">
-                        <i class="fas fa-times-circle mr-2"></i> Equipos Inactivos
-                    </h3>
-                </div>
-                
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table id="equipoInactivo" class="table table-bordered table-hover table-striped table-sm w-100">
-                            <thead class="thead-light">
+            <footer class="equipment-card-footer"><span>Estado registrado en el inventario del sistema.</span><span>Desliza para ver todas las columnas →</span></footer>
+        </section>
+        <section class="equipment-card inactive-card" aria-labelledby="inactive-title">
+            <header class="equipment-card-header"><div><h3 id="inactive-title"><span class="equipment-dot"></span>Equipos inactivos</h3><p>Equipos registrados como inactivos en el sistema.</p></div><span class="equipment-count">{{ $inactiveCount }} registros</span></header>
+            @if ($inactiveCount === 0)
+                <div class="equipment-empty"><i class="fas fa-info-circle" aria-hidden="true"></i> No hay equipos inactivos registrados.</div>
+            @endif
+            <div class="equipment-table-scroll" role="region" tabindex="0" aria-label="Tabla de equipos inactivos; desplazamiento horizontal">
+                <table id="equipoInactivo" class="table table-bordered table-hover table-striped table-sm equipment-table">
+                            <thead class="">
                                 <tr>
-                                    <th class="text-center" style="width: 40px;">Nro</th>
-                                    <th>Asignado</th>
-                                    <th>IP / MAC</th>
-                                    <th class="text-center">Estado</th>
-                                    <th class="text-center">Modificado</th>
+                                    <th scope="col" class="text-center" style="width: 40px;">N.º</th>
+                                    <th scope="col">Asignado a</th>
+                                    <th scope="col">Departamento</th>
+                                    <th scope="col">IP / MAC</th>
+                                    <th scope="col" class="text-center">Estado</th>
+                                    <th scope="col" class="text-center">Modificado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($inActivos as $equipo)
+                                @foreach ($inActivos as $equipo)
                                     <tr>
                                         <td class="text-center align-middle font-weight-bold text-secondary">
                                             {{ $loop->iteration }}
                                         </td>
                                         <td class="align-middle">
-                                            <small class="font-weight-bold d-block">
+                                            <strong class="equipment-name">{{ $equipo->nombre ?: 'Sin nombre' }}</strong>
+<small class="font-weight-bold d-block">
                                                 {{ $equipo->empleado ? $equipo->empleado->nombres . ' ' . $equipo->empleado->apellidos : 'Sin asignación' }}
                                             </small>
                                         </td>
                                         <td class="align-middle">
-                                            <small class="d-block">IP: <code>{{ $equipo->ip_address ?? 'N/A' }}</code></small>
-                                            <small class="d-block text-muted">MAC: {{ $equipo->mac_address ?? 'N/A' }}</small>
+                                            <small class="d-block">IP: <code>{{ $equipo->ip_address ?: '—' }}</code></small>
+                                            <small class="d-block text-muted">MAC: {{ $equipo->mac_address ?: '—' }}</small>
                                         </td>
                                         <td class="text-center align-middle">
                                             <button type="button" 
                                                     class="btn btn-xs toggle-estado btn-danger"
-                                                    data-id="{{ $equipo->id }}">
+                                                    data-id="{{ $equipo->id }}" aria-label="Cambiar estado de {{ $equipo->nombre }}">
                                                 Inactivo
                                             </button>
                                         </td>
                                         <td class="text-center align-middle">
                                             <span class="badge badge-light border">
-                                                {{ \Carbon\Carbon::parse($equipo->updated_at)->translatedFormat('M Y') }}
+                                                {{ $equipo->updated_at ? \Carbon\Carbon::parse($equipo->updated_at)->format('d/m/Y H:i') : '—' }}
                                             </span>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-3">
-                                            <i class="fas fa-info-circle mr-1"></i> Sin registros inactivos.
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
-                    </div>
-                </div>
             </div>
-        </div>
+            <footer class="equipment-card-footer"><span>Estado registrado en el inventario del sistema.</span><span>Desliza para ver todas las columnas →</span></footer>
+        </section>
     </div>
-
-    {{-- Modal Rápido: Modelo --}}
-    <div class="modal fade" id="createModal" tabindex="-1" role="dialog" aria-labelledby="crearModeloModalLabel" aria-hidden="true">
+    @include('netlan::admin.equipos.parciales.modal')
+    <div class="modal fade equipment-modal" id="createModal" tabindex="-1" role="dialog" aria-labelledby="crearModeloModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <form action="{{ route('netlan.admin.modelos.store') }}" method="POST">
                 @csrf
                 <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header text-white equipment-modal-header">
                         <h5 class="modal-title font-weight-bold" id="crearModeloModalLabel">Agregar Nuevo Modelo</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
-                            <span aria-hidden="true">&times;</span>
+                            <span aria-hidden="true">×</span>
                         </button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="marca_id">Marca <span class="text-danger">*</span></label>
-                            <select name="marca_id" id="marca_id" class="form-control" required>
+                            <label for="modelo_marca_id">Marca <span class="text-danger">*</span></label>
+                            <select name="marca_id" id="modelo_marca_id" class="form-control" required>
                                 <option value="" disabled selected>Seleccione una marca</option>
                                 @foreach ($marcas as $marca)
                                     <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
@@ -199,8 +174,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="nombre">Nombre del Modelo <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="nombre" placeholder="Ej. ThinkPad L14" required>
+                            <label for="equipment-model-name">Nombre del Modelo <span class="text-danger">*</span></label>
+                            <input type="text" id="equipment-model-name" class="form-control" name="nombre" placeholder="Ej. ThinkPad L14" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -211,17 +186,16 @@
             </form>
         </div>
     </div>
-
     {{-- Modal Rápido: Marca --}}
-    <div class="modal fade" id="marcaModal" tabindex="-1" role="dialog" aria-labelledby="crearMarcaModalLabel" aria-hidden="true">
+    <div class="modal fade equipment-modal" id="marcaModal" tabindex="-1" role="dialog" aria-labelledby="crearMarcaModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <form action="{{ route('netlan.admin.marcas.store') }}" method="POST">
                 @csrf
                 <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header text-white equipment-modal-header">
                         <h5 class="modal-title font-weight-bold" id="crearMarcaModalLabel">Agregar Nueva Marca</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
-                            <span aria-hidden="true">&times;</span>
+                            <span aria-hidden="true">×</span>
                         </button>
                     </div>
                     <div class="modal-body">
@@ -239,201 +213,112 @@
         </div>
     </div>
 @stop
-
 @section('css')
     @include('netlan::admin.equipos.parciales.css')
-@stop
+    <style>
 
+.net-equipment { --eq-ink:#152536; --eq-muted:#657687; --eq-line:#dbe3eb; color:var(--eq-ink); padding:8px 0 28px; }
+.net-equipment * { box-sizing:border-box; }
+.net-equipment .equipment-intro { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px; margin-bottom:22px; }
+.net-equipment .equipment-eyebrow { color:#087f8c; font-size:11px; letter-spacing:1.8px; font-weight:700; text-transform:uppercase; margin-bottom:7px; }
+.net-equipment h2 { font-size:25px; font-weight:700; letter-spacing:-.5px; margin:0 0 6px; }
+.net-equipment .equipment-intro p { font-size:13px; color:var(--eq-muted); margin:0; }
+.net-equipment .equipment-toolbar { display:flex; gap:8px; flex-wrap:wrap; }
+.net-equipment .equipment-toolbar .btn { display:inline-flex; gap:7px; align-items:center; padding:10px 13px; border-radius:7px; font-size:12px; font-weight:600; }
+.net-equipment .equipment-secondary { background:#fff; border:1px solid #cbd8e3; color:#425f74; }
+.net-equipment .equipment-secondary:hover { background:#eef5f8; }
+.net-equipment .equipment-pdf { color:#b64d5d; background:#fff; border:1px solid #edd2d8; }
+.net-equipment .equipment-pdf:hover { background:#fff0f3; }
+.net-equipment .equipment-primary { background:#087f8c; border-color:#087f8c; color:#fff; }
+.net-equipment .equipment-primary:hover { background:#066875; }
+.net-equipment .equipment-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:15px; margin-bottom:22px; }
+.net-equipment .equipment-metric { background:#fff; border:1px solid var(--eq-line); border-radius:10px; padding:20px; display:flex; gap:14px; align-items:center; }
+.net-equipment .metric-icon { flex:0 0 43px; height:43px; display:flex; align-items:center; justify-content:center; border-radius:10px; color:#087f8c; background:#eaf5f5; font-size:18px; }
+.net-equipment .metric-active .metric-icon { color:#18734d; background:#e9f8ef; }
+.net-equipment .metric-inactive .metric-icon { color:#ad7c2b; background:#fff6e6; }
+.net-equipment .equipment-metric strong { display:block; font-size:28px; font-weight:700; line-height:1.1; margin-bottom:5px; }
+.net-equipment .equipment-metric div>span { font-size:12px; color:var(--eq-muted); }
+.net-equipment .equipment-card { background:#fff; border:1px solid var(--eq-line); border-radius:11px; overflow:hidden; margin-bottom:22px; box-shadow:0 4px 14px #15253608; }
+.net-equipment .equipment-card-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px; border-bottom:1px solid #e6edf2; }
+.net-equipment .equipment-card-header h3 { display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700; margin:0 0 5px; }
+.net-equipment .equipment-card-header p { color:var(--eq-muted); font-size:12px; margin:0; }
+.net-equipment .equipment-dot { background:#21a672; width:8px; height:8px; border-radius:50%; }
+.net-equipment .inactive-card .equipment-dot { background:#d49a3e; }
+.net-equipment .equipment-count { white-space:nowrap; font-size:11px; color:#536b7b; background:#f0f5f8; padding:5px 10px; border-radius:20px; border:1px solid #e2eaf0; }
+.net-equipment .equipment-table-scroll { overflow-x:auto; padding:16px 20px; scrollbar-width:thin; }
+.net-equipment .equipment-table { width:100%!important; min-width:1200px; border:0; font-size:12px; color:#3a5062; margin:0; }
+.net-equipment .inactive-card .equipment-table { min-width:800px; }
+.net-equipment .equipment-table thead th { background:#f3f6f9; color:#5a6f80; font-size:10px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; border:0; border-bottom:1px solid #dbe4eb; padding:13px 10px; }
+.net-equipment .equipment-table tbody td { vertical-align:middle; padding:14px 10px; border:0; border-bottom:1px solid #eaf0f4; }
+.net-equipment .equipment-table.table-striped tbody tr:nth-of-type(odd) { background:#fff; }
+.net-equipment .equipment-table.table-striped tbody tr:nth-of-type(even) { background:#fbfcfd; }
+.net-equipment .equipment-table.table-hover tbody tr:hover { background:#f0f8fa; }
+.net-equipment .equipment-table code { color:#425c70; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px; white-space:nowrap; }
+.net-equipment .equipment-name { display:block; margin-bottom:4px; font-size:12px; color:#152536; }
+.net-equipment .equipment-table .badge { font-size:10px; border-radius:5px; font-weight:600; padding:5px 8px; }
+.net-equipment .equipment-table .badge-secondary { color:#556b7d; background:#eef2f6; border:1px solid #e0e7ef; }
+.net-equipment .equipment-table .badge-light { color:#708391; background:#f8fafc; white-space:nowrap; }
+.net-equipment .toggle-estado { border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600; white-space:nowrap; }
+.net-equipment .toggle-estado.btn-success { background:#e9f8ef; color:#18734d; border-color:#c6e9d4; }
+.net-equipment .toggle-estado.btn-danger { background:#fff6e6; color:#976519; border-color:#f1dfb9; }
+.net-equipment .equipment-table .btn-group { display:flex; align-items:center; justify-content:center; gap:6px; }
+.net-equipment .equipment-table .btn-group form { margin:0; }
+.net-equipment .equipment-table .btn-group .btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:5px!important; font-size:11px; }
+.net-equipment .equipment-table .btn-outline-success { color:#397493; background:#eff5f9; border-color:#dce8f0; }
+.net-equipment .equipment-table .btn-outline-success:hover { background:#dcecf5; }
+.net-equipment .equipment-table .btn-outline-danger { color:#c65767; background:#fff4f5; border-color:#f3dce1; }
+.net-equipment .equipment-table .btn-outline-danger:hover { background:#fbe0e5; }
+.net-equipment .equipment-card-footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; padding:12px 20px; background:#f8fafc; border-top:1px solid #e7edf3; color:var(--eq-muted); font-size:11px; }
+.net-equipment .equipment-empty { padding:20px; font-size:13px; color:#687f91; background:#f8fbfd; border-bottom:1px solid #e6edf2; }
+.net-equipment .equipment-empty i { margin-right:7px; }
+.net-equipment .dataTables_wrapper { font-size:12px; color:var(--eq-muted); }
+.net-equipment .dataTables_wrapper .row { margin-bottom:8px; }
+.net-equipment .dataTables_wrapper input,.net-equipment .dataTables_wrapper select { border:1px solid #cddbe6; border-radius:5px; }
+.net-equipment .dataTables_wrapper .dt-buttons .btn { font-size:11px; border-radius:5px; margin:0 4px 5px 0; }
+.net-equipment .page-item.active .page-link { background:#087f8c; border-color:#087f8c; }
+.net-equipment .page-link { color:#446777; }
+.net-equipment button:focus-visible,.net-equipment a:focus-visible { outline:2px solid #087f8c; outline-offset:3px; }
+.equipment-modal .modal-content { border:0; border-radius:12px; overflow:hidden; }
+.equipment-modal .equipment-modal-header { background:#087f8c; padding:18px 22px; }
+.equipment-modal .modal-title { font-size:17px; }
+.equipment-modal .modal-body { padding:22px; }
+.equipment-modal label { font-size:13px; color:#405b6e; }
+.equipment-modal .form-control { border:1px solid #cddbe6; border-radius:7px; font-size:14px; }
+.equipment-modal .modal-footer { background:#f8fafc; padding:14px 22px; }
+.equipment-modal .btn { border-radius:7px; font-size:13px; }
+.equipment-modal .btn-primary { background:#087f8c; border-color:#087f8c; }
+@media(max-width:767px) { .net-equipment .equipment-metrics { gap:10px; } .net-equipment .equipment-metric { padding:15px; gap:10px; } .net-equipment .equipment-metric div>span { font-size:11px; } .net-equipment .metric-icon { width:32px; flex-basis:32px; height:32px; font-size:14px; } }
+@media(max-width:575px) { .net-equipment h2 { font-size:22px; } .net-equipment .equipment-toolbar { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .net-equipment .equipment-toolbar .btn { justify-content:center; padding:10px; } .net-equipment .equipment-metrics { grid-template-columns:1fr; } .net-equipment .equipment-metric { padding:13px 16px; } .net-equipment .equipment-metric strong { font-size:24px; } .net-equipment .equipment-card-header { padding:16px; } .net-equipment .equipment-table-scroll { padding:12px; } .net-equipment .equipment-card-footer { padding:12px 16px; } }
+@media print { .net-equipment .equipment-toolbar,.net-equipment .equipment-table .btn-group,.net-equipment .equipment-card-footer { display:none; } .net-equipment .equipment-table-scroll { overflow:visible; padding:0; } .net-equipment .equipment-table { min-width:0!important; font-size:9px; } .net-equipment .equipment-table td,.net-equipment .equipment-table th { padding:5px; } .net-equipment .equipment-card { box-shadow:none; } }
+    </style>
+@stop
 @section('js')
     @include('netlan::admin.equipos.parciales.js')
-    
     <script>
-        $(document).ready(function() {
-            // Confirmación genérica de eliminación con SweetAlert2
-            $(document).on('submit', '.form-eliminar', function(e) {
-                e.preventDefault();
-                const form = this;
 
-                Swal.fire({
-                    title: '¿Estás seguro?',
-                    text: "¡Esta acción eliminará el registro permanentemente!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmColor: '#d33',
-                    cancelColor: '#6c757d',
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
+// Confirmación delegada, compatible con filas redibujadas por DataTables.
+$(document).ready(function () {
+    $(document).on('submit', '.net-equipment .form-eliminar', function (event) {
+        event.preventDefault();
+        var form = this;
+        if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+            Swal.fire({
+                title: '¿Eliminar este equipo?',
+                text: 'Se eliminará el registro del equipo seleccionado.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#bc4055',
+                cancelButtonColor: '#657687',
+                confirmButtonText: 'Eliminar equipo',
+                cancelButtonText: 'Cancelar',
+                focusCancel: true
+            }).then(function (result) {
+                if (result.isConfirmed) HTMLFormElement.prototype.submit.call(form);
             });
-        });
+        } else if (window.confirm('¿Eliminar este equipo?')) {
+            HTMLFormElement.prototype.submit.call(form);
+        }
+    });
+});
     </script>
 @stop
-
-
-
-/////////
-
-host=10.85.225.6
-type=peer
-disallow=all
-allow=ulaw&alaw
-context=from-trunk
-dial=SIP/navega
-insecure=very
-dtmfmode=rfc2833
-qualify=no
-nat=yes
-languaje=es
-
-
-
-
-//////
-
-
-
-
-issabel*CLI> sip show settings
-
-
-Global Settings:
-----------------
-  UDP Bindaddress:        0.0.0.0:5066
-  TCP SIP Bindaddress:    Disabled
-  TLS SIP Bindaddress:    Disabled
-  RTP Bindaddress:        Disabled
-  Videosupport:           No
-  Textsupport:            No
-  Ignore SDP sess. ver.:  No
-  AutoCreate Peer:        Off
-  Match Auth Username:    No
-  Allow unknown access:   No
-  Allow subscriptions:    Yes
-  Allow overlap dialing:  Yes
-  Allow promisc. redir:   No
-  Enable call counters:   No
-  SIP domain support:     No
-  Path support :          No
-  Realm. auth:            No
-  Our auth realm          asterisk
-  Use domains as realms:  No
-  Call to non-local dom.: Yes
-  URI user is phone no:   No
-  Always auth rejects:    Yes
-  Direct RTP setup:       No
-  User Agent:             IPBX-2.12.0.0(18.19.0)
-  SDP Session Name:       Asterisk PBX 18.19.0
-  SDP Owner Name:         root
-  Reg. context:           (not set)
-  Regexten on Qualify:    No
-  Trust RPID:             No
-  Send RPID:              No
-  Legacy userfield parse: No
-  Send Diversion:         Yes
-  Caller ID:              Unknown
-  From: Domain:
-  Record SIP history:     Off
-  Auth. Failure Events:   Off
-  T.38 support:           No
-  T.38 EC mode:           Unknown
-  T.38 MaxDtgrm:          4294967295
-  SIP realtime:           Disabled
-  Qualify Freq :          60000 ms
-  Q.850 Reason header:    No
-  Store SIP_CAUSE:        No
-
-Network QoS Settings:
----------------------------
-  IP ToS SIP:             CS3
-  IP ToS RTP audio:       EF
-  IP ToS RTP video:       AF41
-  IP ToS RTP text:        CS0
-  802.1p CoS SIP:         4
-  802.1p CoS RTP audio:   5
-  802.1p CoS RTP video:   6
-  802.1p CoS RTP text:    5
-  Jitterbuffer enabled:   No
-
-Network Settings:
----------------------------
-  SIP address remapping:  Disabled, no localnet list
-  Externhost:             <none>
-  Externaddr:             (null)
-  Externrefresh:          10
-
-Global Signalling Settings:
----------------------------
-  Codecs:                 (ulaw|alaw|gsm|opus|g729)
-  Relax DTMF:             No
-  RFC2833 Compensation:   No
-  Symmetric RTP:          No
-  Compact SIP headers:    No
-  RTP Keepalive:          0 (Disabled)
-  RTP Timeout:            0 (Disabled)
-  RTP Hold Timeout:       0 (Disabled)
-  MWI NOTIFY mime type:   application/simple-message-summary
-  DNS SRV lookup:         Yes
-  Pedantic SIP support:   Yes
-  Reg. min duration       60 secs
-  Reg. max duration:      3600 secs
-  Reg. default duration:  120 secs
-  Sub. min duration       60 secs
-  Sub. max duration:      3600 secs
-  Outbound reg. timeout:  20 secs
-  Outbound reg. attempts: 0
-  Outbound reg. retry 403:No
-  Notify ringing state:   Yes
-    Include CID:          No
-  Notify hold state:      Yes
-  SIP Transfer mode:      open
-  Max Call Bitrate:       384 kbps
-  Auto-Framing:           No
-  Outb. proxy:            <not set>
-  Session Timers:         Accept
-  Session Refresher:      uas
-  Session Expires:        1800 secs
-  Session Min-SE:         90 secs
-  Timer T1:               500
-  Timer T1 minimum:       100
-  Timer B:                32000
-  No premature media:     Yes
-  Max forwards:           70
-
-Default Settings:
------------------
-  Allowed transports:     UDP
-  Outbound transport:     UDP
-  Context:                from-sip-external
-  Record on feature:      automon
-  Record off feature:     automon
-  Force rport:            Auto (No)
-  DTMF:                   rfc2833
-  Qualify:                0
-  Keepalive:              0
-  Use ClientCode:         No
-  Progress inband:        No
-  Language:               es
-  Tone zone:              <Not set>
-  MOH Interpret:          default
-  MOH Suggest:
-  Voice Mail Extension:   *97
-  RTCP Multiplexing:      No
-
-
-
-  
-15:27:28.358426 IP 10.85.225.6.sip > 10.101.111.34.stanag-5066: SIP: SIP/2.0 500 Server Internal Error
-E..e..@.<.R.
-U..
-eo".....QmtSIP/2.0 500 Server Internal Error
-Via: SIP/2.0/UDP 10.101.111.34:5066;branch=z9hG4bK622ec378
-To: <sip:50422160200@10.85.225.6:5060>;tag=npi4o8tmj4ipis512zgwx69i67fq2mss
-From: <sip:22694416@10.101.111.34:5066>;tag=as548f4ab7
-Call-ID: 0b0683882371af7600e090574452908e@10.101.111.34:5066
-CSeq: 102 INVITE
-Content-Length: 0

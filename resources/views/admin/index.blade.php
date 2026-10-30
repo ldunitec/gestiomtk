@@ -39,7 +39,7 @@
         {{-- agenda --}}
 
         <div class="col-md-3 col-sm-6 col-12">
-            <a href="{{ url('admin/agenda') }}">
+            <a href="{{ url('produccion/admin/agendas') }}">
                 <div class="info-box zoomp">
                     <img src="{{ url('/img/calendario.gif') }}" width="70px" alt="">
                     <div class="info-box-content">
@@ -52,11 +52,12 @@
             </a>
         </div>
         <div class="col-md-3 col-sm-6 col-12">
-            <a href="{{ url('admin/marcaciones') }}">
+            {{-- <a href="{{ url('admin/marcaciones') }}"> --}}
+  
                 <div class="info-box zoomp">
                     <img src="{{ url('/img/aistencia.gif') }}" width="70px" alt="">
                     <div class="info-box-content">
-                        <span class="info-box-text"><b>Asistencia</b></span>
+                        <span class="info-box-text"><b>Vending</b></span>
                         <span class="info-box-number"> </span>
                     </div>
                     <!-- /.info-box-content -->

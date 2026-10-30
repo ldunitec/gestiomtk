@@ -32,20 +32,22 @@ return [
     ],
 
        'todoist' => [
-        'token' => env('TODOIST_TOKEN'),
-        'project_id' => env('TODOIST_PROJECT_ID_PERSONAL'),
-        'usuarios' => [
-            env('TODOIST_LD'),
-            // env('TODOIST_KG'),
-            // env('TODOIST_HM'),
-            // env('TODOIST_CL'),
-        ],
+       'url' => env('TODOIST_URL', 'https://api.todoist.com/api/v1/'),
+       'token' => env('TODOIST_TOKEN'),
+       'project_id' => env('TODOIST_PROJECT_ID'),
+       'users' => [
+           'ld' => env('TODOIST_LD'),
+           'cl' => env('TODOIST_CL'),
+           'hm' => env('TODOIST_HM'),
+           'kg' => env('TODOIST_KG'),
+       ],
+   
     ],
     
     'anviz' => [
     'ip'   => env('ANVIZ_IP'),
     'user' => env('ANVIZ_USER'),
-    'pass' => env('ANVIZ_PASS'),
+    // 'pass' => env('ANVIZ_PASS'),
 ],
 
 

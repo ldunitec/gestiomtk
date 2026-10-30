@@ -25,6 +25,7 @@ Route::middleware(['auth'])
     ->prefix('produccion/admin')
     ->as('produccion.admin.')
     ->group(function () {
+        Route::post( 'agendas/verificar-todoist', [AgendaController::class,'verificarCompletadasTodoist'])->name('agenda.verificar-todoist');
         Route::post('agendas/{event}/update-date', [AgendaController::class, 'updateDate'])->name('agendas.updateDate');
         Route::get('/agendas/get-events', [AgendaController::class, 'getEvents'])->name('agendas.getEvents');
         Route::post('agendas/{event}/update-item', [AgendaController::class, 'updateDateItem'])->name('agendas.updateDateItem');

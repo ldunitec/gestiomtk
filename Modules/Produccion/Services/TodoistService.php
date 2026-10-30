@@ -11,124 +11,103 @@ class TodoistService
 
     public function __construct()
     {
-        // URL base oficial /api/v1/
-        $this->baseUrl = rtrim(config('services.todoist.url', 'https://api.todoist.com/api/v1/'), '/') . '/';
-        $this->token   = config('services.todoist.token');
-
+        $this->baseUrl = rtrim(config('services.todoist.url') ?: 'https://api.todoist.com/api/v1/', '/') . '/';
+        $this->token = config('services.todoist.token');
         if (!$this->token) {
-            throw new \Exception("Token de Todoist no configurado en .env o config/services.php");
+            throw new \RuntimeException('Token de Todoist no configurado.');
         }
     }
 
-    /**
-     * Cliente HTTP base
-     */
     protected function client()
     {
-        return Http::withToken($this->token)
-            ->acceptJson()
-            ->asJson();
+        return Http::withToken($this->token)->acceptJson()->asJson()
+            ->connectTimeout(5)->timeout(15);
     }
 
-    /**
-     * Crear tarea
-     */
+    protected function payload(array $data, $creating = false)
+    {
+        $payload = [
+            'content' => $data['title'] ?? $data['content'] ?? null,
+            'description' => $data['description'] ?? null,
+            'due_date' => $data['due_date'] ?? null,
+            'due_string' => $data['due'] ?? null,
+            'assignee_id' => $data['assignee_id'] ?? null,
+            'priority' => $data['priority'] ?? null,
+        ];
+        if ($creating) {
+            $payload['project_id'] = $data['project_id'] ?? null;
+        }
+        return array_filter($payload, fn ($value) => $value !== null);
+    }
+
     public function createTask(array $data)
     {
-        $url = $this->baseUrl . 'tasks';
-
-        $payload = array_filter([
-            'content'     => $data['title'] ?? $data['content'] ?? null,
-            'description' => $data['description'] ?? null,
-            'project_id'  => $data['project_id'] ?? null,
-            'due_date'    => $data['due_date'] ?? null,
-            'due_string'  => $data['due'] ?? null,
-            'assignee_id' => $data['assignee_id'] ?? null,
-            'priority'    => $data['priority'] ?? null,
-        ], fn($value) => !is_null($value));
-
-        $response = $this->client()->post($url, $payload);
-
-        return $this->handleResponse($response);
+        return $this->handleResponse($this->client()->post($this->baseUrl . 'tasks', $this->payload($data, true)));
     }
 
-    /**
-     * Obtener tareas
-     */
+    public function getTask($taskId)
+    {
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'tasks/' . rawurlencode((string) $taskId)));
+    }
+
     public function getTasks()
     {
-        $response = $this->client()->get($this->baseUrl . 'tasks');
-
-        return $this->handleResponse($response);
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'tasks'));
     }
 
-    /**
-     * Obtener proyectos
-     */
     public function getProjects()
     {
-        $response = $this->client()->get($this->baseUrl . 'projects');
-
-        return $this->handleResponse($response);
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'projects'));
     }
 
-    /**
-     * Actualizar tarea
-     */
     public function updateTask($taskId, array $data)
     {
-        $url = $this->baseUrl . "tasks/{$taskId}";
-
-        $payload = array_filter([
-            'content'     => $data['title'] ?? $data['content'] ?? null,
-            'description' => $data['description'] ?? null,
-            'due_date'    => $data['due_date'] ?? null,
-            'due_string'  => $data['due'] ?? null,
-            'assignee_id' => $data['assignee_id'] ?? null,
-            'priority'    => $data['priority'] ?? null,
-        ], fn($value) => !is_null($value));
-
-        $response = $this->client()->post($url, $payload);
-
-        return $this->handleResponse($response);
+        return $this->handleResponse($this->client()->post(
+            $this->baseUrl . 'tasks/' . rawurlencode((string) $taskId), $this->payload($data)
+        ));
     }
 
-    /**
-     * Completar tarea
-     */
     public function completeTask($taskId)
     {
-        $response = $this->client()->post($this->baseUrl . "tasks/{$taskId}/close");
+        $url = rtrim($this->baseUrl, '/')
+            . '/tasks/'
+            . rawurlencode(trim((string) $taskId))
+            . '/close';
 
-        return $this->handleResponse($response);
-    }
-
-    /**
-     * Eliminar tarea
-     */
-    public function deleteTask($taskId)
-    {
-        $response = $this->client()->delete($this->baseUrl . "tasks/{$taskId}");
-
-        return $this->handleResponse($response);
-    }
-
-    /**
-     * Manejo centralizado de respuestas
-     */
-    protected function handleResponse($response)
-    {
-        if ($response->failed()) {
-            return [
-                'success' => false,
-                'status'  => $response->status(),
-                'error'   => $response->body(),
-            ];
-        }
+        $response = Http::withToken(trim((string) $this->token))
+            ->acceptJson()
+            ->connectTimeout(10)
+            ->timeout(25)
+            ->withBody('', 'application/json')
+            ->send('POST', $url);
 
         return [
-            'success' => true,
-            'data'    => $response->json(),
+            'success' => $response->successful(),
+            'status' => $response->status(),
+            'data' => $response->json(),
+            'error' => $response->successful()
+                ? null
+                : $response->body(),
+            'version' => 'cierre-directo-v3',
         ];
+    }
+
+    public function reopenTask($taskId)
+    {
+        return $this->handleResponse($this->client()->post($this->baseUrl . 'tasks/' . rawurlencode((string) $taskId) . '/reopen'));
+    }
+
+    public function deleteTask($taskId)
+    {
+        return $this->handleResponse($this->client()->delete($this->baseUrl . 'tasks/' . rawurlencode((string) $taskId)));
+    }
+
+    protected function handleResponse($response)
+    {
+        if (!$response->successful()) {
+            return ['success' => false, 'status' => $response->status(), 'error' => $response->body()];
+        }
+        // Una respuesta HTTP exitosa sin JSON también es válida al completar.
+        return ['success' => true, 'status' => $response->status(), 'data' => $response->json()];
     }
 }

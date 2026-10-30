@@ -46,7 +46,7 @@ class ViaticoController extends Controller
 
         // dd($data);
         // Calcular combustible: (distancia * 2 + 30) / 30
-        $data['combustible'] = ceil( ($data['distancia_km'] * 2 + 30) / 30 )*$data['precio_combustible']*1.3;
+        $data['combustible'] = ceil( ($data['distancia_km'] * 2 + 30) / 40 )*$data['precio_combustible']*1.15;
         $data['alimentacion'] = ceil( $data['cantidad_tecnicos'] *$data['dias']*$data['precio_alimentacion'] );        // Total
         $data['peajes'] = ceil( $data['precio_peaje'] *$data['peajes']);        // Total
         $data['extra'] = ceil( $data['extra']);        // Total
@@ -66,14 +66,30 @@ class ViaticoController extends Controller
         return view('admin.viaticos.show', compact('viatico'));
     }
 
-    public function pdf($id)
-    {
-        $viatico = Viatico::findOrFail($id);
+    // public function pdf($id)
+    // {
+    //     $viatico = Viatico::findOrFail($id);
 
-        $pdf = Pdf::loadView('admin.viaticos.pdf', compact('viatico'));
+    //     $pdf = Pdf::loadView('admin.viaticos.pdf', compact('viatico'));
 
-        return $pdf->download('viatico_'.$viatico->id.'.pdf');
-    }
+    //     return $pdf->download('viatico_'.$viatico->id.'.pdf');
+    // }
+
+
+public function pdf($id)
+{
+
+
+    $viatico = Viatico::findOrFail($id);
+// return response()->json($viatico);
+    $pdf = Pdf::loadView(
+        'admin.viaticos.pdf',
+        compact('viatico')
+    )->setPaper('letter', 'portrait');
+
+    return $pdf->stream('viatico_' . $viatico->ciudad . '_'.$viatico->dias.' dia'. '.pdf');
+}
+
 
     public function list()
 {

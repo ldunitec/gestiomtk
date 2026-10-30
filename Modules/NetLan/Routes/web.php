@@ -56,6 +56,11 @@ Route::middleware(['auth'])
     ->group(function () {
 
         Route::get('equipos/list', [EquipoController::class, 'list'])->name('equipos.list');
+        Route::post('equipos/cambiar-estado/{id}', [EquipoController::class, 'cambiarEstado'])->name('equipos.cambiarEstado');
+        Route::get('equipos/reporte/pdf', [EquipoController::class, 'reportePdf'])
+            ->name('equipos.pdf');
+
+
         // Route::get('monitoreo', [MonitoreoController::class, 'index'])->name('monitoreo.index');
 // Route::get('monitoreo/data', [MonitoreoController::class, 'data'])->name('monitoreo.data');
 // Route::get('alertas/data', [AlertaController::class, 'data'])->name('alertas.data');
@@ -91,7 +96,7 @@ Route::middleware(['auth'])
 Route::middleware(['auth'])->prefix('netlan/admin')->as('netlan.admin.')
     ->group(function () {
         Route::get('/empleados/estadisticas', [EmpleadoController::class, 'estadisticas'])
-        ->name('empleados.estadisticas');
+            ->name('empleados.estadisticas');
         Route::get('/empleados/{id}/ficha', [EmpleadoController::class, 'ficha'])
             ->name('empleados.ficha');
         Route::resource('empleados', EmpleadoController::class);
@@ -114,6 +119,10 @@ Route::middleware(['auth'])
         Route::delete('/connections/{id}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
         Route::get('/api/conexiones', [ConnectionController::class, 'apiConexiones'])->name('api.conexiones');
         Route::get('/connections/buscar-valor/{valor}', [ConnectionController::class, 'buscarValor']);
+        Route::post('/connections/asignar-puerto', [
+            ConnectionController::class,
+            'asignarPuerto'
+        ])->name('connections.asignarPuerto');
         Route::post('/connections/cambiar-estado/{id}', [ConnectionController::class, 'cambiarEstado']);
     });
 

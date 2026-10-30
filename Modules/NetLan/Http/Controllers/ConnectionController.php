@@ -21,7 +21,7 @@ class ConnectionController extends Controller
 
     public function index()
     {
-        $equipos = Equipo::where('estado', 'Activo')->orderBy('nombre','asc')->get();
+        $equipos = Equipo::where('estado', 'Activo')->with('empleado.departamento')->orderBy('nombre','asc')->get();
         // return response()->json($equipos);
         $ports =  Port::whereHas('patch_panel', function ($query) {
             $query->where('name', 'not like', 'SW%');
@@ -35,13 +35,13 @@ class ConnectionController extends Controller
         //    return response()->json($swRouts);
         $conexiones = Connection::with('equipo', 'port.patch_panel')->get();
 
-        // return response()->json($portsws);
+        // return response()->json($equipos);
         return view('netlan::admin.connections.index', compact('equipos', 'ports', 'conexiones', 'portsws','swPorts'));
     }
 
       public function cambiarEstado(Request $request, $id)
     {
-        //   $datos = $request->all();
+          $datos = $request->all();
         //     return response()->json($datos);
         $conexion = Connection::findOrFail($id);
         $conexion->estado = $conexion->estado === 'Activo' ? 'Inactivo' : 'Activo';
@@ -84,51 +84,165 @@ class ConnectionController extends Controller
     /**
      * Display the specified resource.
      */
-   public function show()
+public function show()
 {
-     $equipos = Equipo::all();
-     $equipos = Equipo::all();
-     $ports =  Port::all();
-     $swPorts =  SwPort::all();
+    $equipos = Equipo::with([
+        'empleado.departamento'
+    ])->get();
 
+    $ports = Port::with('patch_panel')->get();
 
-    $switches = Connection::pluck('sw')->toArray(); // Todos los valores 'sw' registrados
-    $conexiones = Connection::with('equipo')->get(); // Si necesitas más detalles en la vista
-     $puerto = DB::table('connections')->pluck('nombre')->toArray(); // Ej: ['PP-A-1', 'PP-A-5', 'PP-A-9']
-        $sw = DB::table('connections')->pluck('id','sw')->toArray(); //
+    $swPorts = SwPort::with('sw_mk')->get();
 
-    return view('netlan::admin.connections.show', compact('equipos', 'swPorts', 'ports',  'switches', 'conexiones','puerto','sw'));
+    /*
+    |--------------------------------------------------------------------------
+    | Conexiones del mapa de red
+    |--------------------------------------------------------------------------
+    | Cargamos toda la información necesaria para mostrar:
+    | - Puerto Cisco
+    | - Patch Panel
+    | - Equipo
+    | - Empleado
+    | - Departamento
+    | - IP
+    | - MAC
+    | - Estado
+    | - Comentario
+    */
+    $conexiones = Connection::with([
+        'equipo.empleado.departamento',
+        'port.patch_panel'
+    ])->get();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Puertos Cisco utilizados
+    |--------------------------------------------------------------------------
+    */
+    $switches = $conexiones
+        ->pluck('sw')
+        ->filter()
+        ->values()
+        ->toArray();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Patch Panels utilizados
+    |--------------------------------------------------------------------------
+    */
+    $puerto = $conexiones
+        ->pluck('nombre')
+        ->filter()
+        ->values()
+        ->toArray();
+
+    return view(
+        'netlan::admin.connections.show',
+        compact(
+            'equipos',
+            'swPorts',
+            'ports',
+            'switches',
+            'conexiones',
+            'puerto'
+        )
+    );
 }
 
 public function buscarValor($valor)
 {
-  
+    if (Str::startsWith($valor, 'PP')) {
 
-      if (Str::startsWith($valor, 'PP')) {
-        $resultado = Connection::with('equipo', 'equipo.empleado')
-            ->where('nombre', 'like', $valor . '%')
-            ->first();
+        $resultados = Connection::with([
+            'equipo.empleado.departamento',
+            'port.patch_panel'
+        ])
+        ->where('nombre', 'like', $valor . '%')
+        ->get();
+// 
     } else {
-        $resultado = Connection::with('equipo', 'equipo.empleado')
-            ->where('sw', $valor)
-            ->first();
-    }
-    
-    
-    // $resultado = Connection::with('equipo','equipo.empleado')->where('nombre', $valor)->first();
-    //    return response()->json($resultado);
 
-    if ($resultado) {
-        return response()->json($resultado);
-    } else {
-        return response()->json(['mensaje' => 'No encontrado'], 404);
+        $resultados = Connection::with([
+            'equipo.empleado.departamento',
+            'port.patch_panel'
+        ])
+        ->where('sw', $valor)
+        ->get();
     }
+
+    if ($resultados->isNotEmpty()) {
+
+        return response()->json([
+            'cantidad' => $resultados->count(),
+            'datos' => $resultados
+        ]);
+
+    }
+
+ return response()->json([
+    'mensaje' => 'Puerto libre',
+    'cantidad' => 0,
+    'datos' => []
+]);
 }
 
 
     /**
      * Show the form for editing the specified resource.
      */
+
+public function asignarPuerto(Request $request)
+{
+    $request->validate([
+        'connection_id' => 'required|integer|exists:connections,id',
+        'sw' => [
+            'required',
+            'string',
+            'regex:/^SW-A-(?:[1-9]|[1-4][0-9]|5[0-2])$/',
+        ],
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Buscar la conexión existente
+    |--------------------------------------------------------------------------
+    */
+    $conexion = Connection::findOrFail($request->connection_id);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Verificar que el puerto Cisco no esté ocupado
+    |--------------------------------------------------------------------------
+    */
+    $ocupado = Connection::where('sw', $request->sw)
+        ->where('id', '!=', $conexion->id)
+        ->exists();
+
+    if ($ocupado) {
+
+        return response()->json([
+            'success' => false,
+            'mensaje' => 'El puerto ' . $request->sw . ' ya tiene una conexión registrada.'
+        ], 422);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Asignar puerto
+    |--------------------------------------------------------------------------
+    */
+    $conexion->sw = $request->sw;
+    $conexion->save();
+
+    return response()->json([
+        'success' => true,
+        'mensaje' => 'Puerto asignado correctamente.',
+        'conexion_id' => $conexion->id,
+        'sw' => $conexion->sw
+    ]);
+}
+
+
     public function edit($id)
     {
         // $datos= Connection::find($id);
@@ -187,7 +301,7 @@ public function buscarValor($valor)
         $conexion = Connection::findOrFail($id);
         $conexion->delete();
 
-        return redirect()->route('NetLan::admin.connections.index')
+        return redirect()->back()
             ->with('mensaje', 'Conexion eliminada correctamente')
             ->with('icono', 'success');
     }

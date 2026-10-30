@@ -4,6 +4,7 @@ namespace Modules\Produccion\Imports;
 use Modules\Produccion\Entities\Agenda;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -12,33 +13,57 @@ class AgendaImport implements ToCollection, WithHeadingRow
     private array $envUserMap;
 
     public function __construct()
-    {
-        // Mapeo de nombres del Excel hacia los IDs configurados en tu .env
-        $this->envUserMap = [
-            'kevyn'   => config('services.todoist.kg', env('TODOIST_KG')),
-            'kevin'   => config('services.todoist.kg', env('TODOIST_KG')),
-            'celvyn'  => config('services.todoist.cl', env('TODOIST_CL')),
-            'luis'    => config('services.todoist.ld', env('TODOIST_LD')),
-            'harling' => config('services.todoist.hm', env('TODOIST_HM')),
-        ];
-    }
+{
+    $this->envUserMap = [
+        'kevyn'         => config('services.todoist.users.kg'),
+        'Kevin Godoy'   => config('services.todoist.users.kg'),
+        'Celvyn Lozano' => config('services.todoist.users.cl'),
+        'Luis Diaz'     => config('services.todoist.users.ld'),
+        'harling'       => config('services.todoist.users.hm'),
+    ];
+}
 
     public function collection(Collection $rows)
     {
-        foreach ($rows as $row) {
-            // "secuencia_id_del_ticket" es la columna "Secuencia ID del ticket" en minúsculas/snake_case
-            $secuenciaTicket = isset($row['secuencia_id_del_ticket']) 
-                ? trim((string) $row['secuencia_id_del_ticket']) 
-                : null;
 
-            // Validar si la secuencia del ticket ya existe en la BD o viene vacía para omitir duplicados
-            if (!$secuenciaTicket || Agenda::where('secuencia_ticket', $secuenciaTicket)->exists()) {
+    
+        foreach ($rows as $row) {
+
+
+     $nombreAsignado = $row['asignada_a'] ?? null;
+
+
+            // Leer y validar la secuencia del ticket
+            $secuenciaTicket = trim(
+                (string) ($row['secuencia_id_del_ticket'] ?? '')
+            );
+
+            if (
+                $secuenciaTicket === '' ||
+                Agenda::where('secuencia_ticket', $secuenciaTicket)->exists()
+            ) {
                 continue;
             }
 
-            // Resolver asignación de usuario id
-            $assignedUserId = $this->resolveUserIdFromEnv($row['asignada_a'] ?? null);
+            // Leer la persona asignada desde el Excel
+            $nombreAsignado = $row['asignada_a'] ?? null;
+
+            // Resolver el ID configurado
+            $assignedUserId = $this->resolveUserIdFromEnv(
+                $nombreAsignado
+            );
+
+            // Registrar datos para diagnosticar asignaciones
+            if ($nombreAsignado !== null && $assignedUserId === null) {
+                Log::warning('AgendaImport: usuario no identificado', [
+                    'asignada_a' => $nombreAsignado,
+                    'encabezados' => array_keys($row->toArray()),
+                ]);
+            }
+
             $tipo = 'Llamada';
+
+           
 
             Agenda::create([
                 'titulo'           => $row['cliente'] ?? 'Sin título',
@@ -56,20 +81,29 @@ class AgendaImport implements ToCollection, WithHeadingRow
                 'secuencia_ticket' => $secuenciaTicket,
             ]);
         }
-
     }
 
-    /**
-     * Mapea la cadena de "Asignada a" con el ID del .env correspondiente
-     */
-    private function resolveUserIdFromEnv(?string $nombre): ?int
+    private function normalizeName(?string $nombre): string
     {
-        if (empty($nombre)) return null;
+        return mb_strtolower(trim((string) $nombre), 'UTF-8');
+    }
 
-        $nombreLower = mb_strtolower(trim($nombre));
+    private function resolveUserIdFromEnv($nombre): ?int
+    {
+        if ($nombre === null || trim((string) $nombre) === '') {
+            return null;
+        }
+
+        $nombreLower = $this->normalizeName((string) $nombre);
 
         foreach ($this->envUserMap as $key => $id) {
-            if (str_contains($nombreLower, $key) && !empty($id)) {
+            $keyLower = $this->normalizeName($key);
+
+            if (
+                str_contains($nombreLower, $keyLower) &&
+                is_numeric($id) &&
+                (int) $id > 0
+            ) {
                 return (int) $id;
             }
         }
@@ -77,9 +111,6 @@ class AgendaImport implements ToCollection, WithHeadingRow
         return null;
     }
 
-    /**
-     * Helper para color de evento (replica tu controlador)
-     */
     private function getColorByTipo(string $tipo): string
     {
         return match ($tipo) {

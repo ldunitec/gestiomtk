@@ -125,28 +125,47 @@
                }).buttons().container().appendTo('#equipoInactivo_wrapper .row:eq(0)');
            });
        </script>
-       {{-- cambiar estado   --}}
-       <script>
-           $(document).on('click', '.toggle-estado', function() {
-               let id = $(this).data('id');
+      {{-- Cambiar estado --}}
+<script>
+    $(document).on('click', '.toggle-estado', function() {
 
-               $.ajax({
-                   url: '{{ url('admin/equipos/cambiar-estado') }}/' + id,
-                   type: 'POST',
-                   data: {
-                       _token: '{{ csrf_token() }}'
-                   },
-                   success: function(response) {
-                       Swal.fire('Éxito', response.message, 'success');
-                       // $('#miTabla').DataTable().ajax.reload(null, false);
-                       location.reload();
-                   },
-                   error: function() {
-                       Swal.fire('Error', 'No se pudo cambiar el estado', 'error');
-                   }
-               });
-           });
-       </script>
+        let id = $(this).data('id');
+
+        $.ajax({
+            url: '{{ url('netlan/admin/equipos/cambiar-estado') }}/' + id,
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+
+            success: function(response) {
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: response.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+
+            },
+
+            error: function(xhr) {
+
+                console.log(xhr.responseText);
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cambiar el estado'
+                });
+            }
+        });
+
+    });
+</script>
        <script>
            function preguntar{{ $equipo->id }}(event) {
                event.preventDefault();

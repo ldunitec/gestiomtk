@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Process;
 use Modules\NetLan\Entities\Departamento;
 use Modules\NetLan\Entities\Empleado;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Modules\NetLan\Entities\Port;
+use Modules\NetLan\Entities\SwPort;
 
 class EquipoController extends Controller
 {
@@ -24,18 +27,23 @@ class EquipoController extends Controller
 
         $departamentos = Departamento::all();
         $marcas = Marca::all();
+        $ports = Port::all();
+        $swPorts = SwPort::all();
         $empleados = Empleado::orderBy('nombres', 'asc')->get();
-     $equipos = Equipo::with('empleado', 'marca')->get();
-        $activos = Equipo::with('empleado', 'marca')->where('estado','activo')->get();
+     $equipos = Equipo::with('empleado.departamento', 'marca')->get();
+        $activos = Equipo::with('empleado.departamento', 'marca')->where('estado','activo')->get();
 
         $inActivos = Equipo::with('empleado', 'marca')->where('estado','inactivo')->get();
-        // dd($inActivos);
+    // return response()->json($activos);
         return view('netlan::admin.equipos.index', compact(
             'departamentos',
             'marcas',
             'empleados',
             'inActivos',
-            'activos'
+            'activos',
+            'equipos',
+            'ports',
+            'swPorts'
         ));
 
        
@@ -116,7 +124,6 @@ class EquipoController extends Controller
             ->with('icono', 'success');
     }
 
-
     /**
      * Display the specified resource.
      */
@@ -148,8 +155,6 @@ class EquipoController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //    $datos = $request->all();
-        //    return response()->json($datos);
         $request->validate([
             'nombre' => 'required|string|max:255',
             'empleado_id' => 'required',
@@ -191,6 +196,47 @@ class EquipoController extends Controller
             ->with('icono', 'success');
     }
 
+
+public function reportePdf()
+{
+    $activos = Equipo::with(['empleado', 'marca', 'modelo'])
+        ->where('estado', 'Activo')
+        ->orderBy('tipo')
+        ->orderBy('id')
+        ->get();
+
+    $inActivos = Equipo::with(['empleado', 'marca', 'modelo'])
+        ->where('estado', '!=', 'Activo')
+        ->orderBy('tipo')
+        ->orderBy('id')
+        ->get();
+
+    $activosPorTipo = $activos->groupBy(function ($equipo) {
+        return $equipo->tipo ?: 'SIN TIPO';
+    });
+
+    $inActivosPorTipo = $inActivos->groupBy(function ($equipo) {
+        return $equipo->tipo ?: 'SIN TIPO';
+    });
+
+    $fecha = now()->format('d/m/Y H:i');
+
+    $pdf = Pdf::loadView(
+        'netlan::admin.equipos.pdf',
+        compact(
+            'activos',
+            'inActivos',
+            'activosPorTipo',
+            'inActivosPorTipo',
+            'fecha'
+        )
+    );
+
+    $pdf->setPaper('letter', 'landscape');
+
+    return $pdf->stream('reporte-equipos.pdf');
+}
+
     /**
      * Remove the specified resource from storage.
      */
@@ -204,5 +250,9 @@ class EquipoController extends Controller
             ->with('icono', 'success');
     }
 // scan-red
+
+
+
+
 
 }

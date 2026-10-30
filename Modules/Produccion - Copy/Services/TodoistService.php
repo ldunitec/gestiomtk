@@ -1,0 +1,153 @@
+<?php
+
+namespace Modules\Produccion\Services;
+
+use Illuminate\Support\Facades\Http;
+
+class TodoistService
+{
+    protected $baseUrl;
+    protected $token;
+
+    public function __construct()
+    {
+        $this->baseUrl = rtrim(config('services.todoist.url') ?: 'https://api.todoist.com/api/v1/', '/') . '/';
+        $this->token = config('services.todoist.token');
+        if (!$this->token) {
+            throw new \RuntimeException('Token de Todoist no configurado.');
+        }
+    }
+
+    protected function client()
+    {
+        return Http::withToken($this->token)->acceptJson()->asJson()
+            ->connectTimeout(5)->timeout(15);
+    }
+
+    protected function payload(array $data, $creating = false)
+    {
+        $payload = [
+            'content' => $data['title'] ?? $data['content'] ?? null,
+            'description' => $data['description'] ?? null,
+            'due_date' => $data['due_date'] ?? null,
+            'due_string' => $data['due'] ?? null,
+            'assignee_id' => $data['assignee_id'] ?? null,
+            'priority' => $data['priority'] ?? null,
+        ];
+        if ($creating) {
+            $payload['project_id'] = $data['project_id'] ?? null;
+        }
+        return array_filter($payload, fn($value) => $value !== null);
+    }
+
+    public function createTask(array $data)
+    {
+        return $this->handleResponse($this->client()->post($this->baseUrl . 'tasks', $this->payload($data, true)));
+    }
+
+    public function getTask($taskId)
+    {
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'tasks/' . rawurlencode((string) $taskId)));
+    }
+
+    public function getTasks()
+    {
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'tasks'));
+    }
+
+    public function getProjects()
+    {
+        return $this->handleResponse($this->client()->get($this->baseUrl . 'projects'));
+    }
+
+    public function updateTask($taskId, array $data)
+    {
+        return $this->handleResponse($this->client()->post(
+            $this->baseUrl . 'tasks/' . rawurlencode((string) $taskId),
+            $this->payload($data)
+        ));
+    }
+
+public function completeTask($taskId)
+{
+    $url = rtrim($this->baseUrl, '/')
+        . '/tasks/'
+        . rawurlencode(trim((string) $taskId))
+        . '/close';
+
+    $response = Http::withToken(trim((string) $this->token))
+        ->acceptJson()
+        ->connectTimeout(10)
+        ->timeout(25)
+        ->withBody('', 'application/json')
+        ->send('POST', $url);
+
+    return [
+        'success' => $response->successful(),
+        'status' => $response->status(),
+        'data' => $response->json(),
+        'error' => $response->successful()
+            ? null
+            : $response->body(),
+    ];
+}
+
+public function reopenTask($taskId)
+{
+    return $this->request(
+        'POST',
+        'tasks/' . rawurlencode(trim((string) $taskId)) . '/reopen'
+    );
+}
+
+    public function deleteTask($taskId)
+    {
+        return $this->handleResponse($this->client()->delete($this->baseUrl . 'tasks/' . rawurlencode((string) $taskId)));
+    }
+
+    protected function handleResponse($response)
+    {
+        if (!$response->successful()) {
+            return ['success' => false, 'status' => $response->status(), 'error' => $response->body()];
+        }
+        // Una respuesta HTTP exitosa sin JSON también es válida al completar.
+        return ['success' => true, 'status' => $response->status(), 'data' => $response->json()];
+    }
+
+    private function request($method, $path, array $payload = [])
+    {
+        if (isset($payload['title']) && !isset($payload['content'])) {
+            $payload['content'] = $payload['title'];
+        }
+
+        unset($payload['title']);
+
+        $url = $this->baseUrl . ltrim($path, '/');
+
+        $client = Http::withToken(trim((string) $this->token))
+            ->acceptJson()
+            ->connectTimeout(10)
+            ->timeout(25);
+
+        if (strtoupper($method) === 'GET') {
+            $response = $client->get($url);
+        } elseif (empty($payload)) {
+            // Cerrar o reabrir: POST sin cuerpo, evitando enviar [].
+            $response = $client
+                ->withBody('', 'application/json')
+                ->send('POST', $url);
+        } else {
+            // Crear o actualizar: enviar los datos como JSON.
+            $response = $client->asJson()->post($url, $payload);
+        }
+
+        return [
+            'success' => $response->successful(),
+            'status' => $response->status(),
+            'data' => $response->json(),
+            'error' => $response->successful()
+                ? null
+                : $response->body(),
+        ];
+    }
+}

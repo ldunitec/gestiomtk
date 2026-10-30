@@ -369,34 +369,34 @@ return [
                 'url'  => 'netlan/admin/equipos',
                 'icon' => 'fas fa-fw fa-desktop',
             ],
-            [
-                'can'  => 'admin.paneles.index',
-                'text' => 'Paneles',
-                'url'  => 'netlan/admin/paneles',
-                'icon' => 'fas fa-fw fa-server',
-            ],
-            [
-                'can'  => 'admin.empleados.index',
-                'text' => 'Patch Panels',
-                'url'  => 'netlan/admin/patchPanel',
-                'icon' => 'fas fa-fw fa-ethernet',
-            ],
-            [
-                'text' => 'Switches y Routers',
-                'url'  => 'netlan/admin/switchs',
-                'icon' => 'fas fa-fw fa-random',
-            ],
-            [
-                'can'  => 'admin.ports.index',
-                'text' => 'Puertos Patch Panel',
-                'url'  => 'netlan/admin/ports',
-                'icon' => 'fas fa-fw fa-plug',
-            ],
-            [
-                'text' => 'Puertos Switch',
-                'url'  => 'netlan/admin/switchs',
-                'icon' => 'fas fa-fw fa-tty',
-            ],
+            // [
+            //     'can'  => 'admin.paneles.index',
+            //     'text' => 'Paneles',
+            //     'url'  => 'netlan/admin/paneles',
+            //     'icon' => 'fas fa-fw fa-server',
+            // ],
+            // [
+            //     'can'  => 'admin.empleados.index',
+            //     'text' => 'Patch Panels',
+            //     'url'  => 'netlan/admin/patchPanel',
+            //     'icon' => 'fas fa-fw fa-ethernet',
+            // ],
+            // [
+            //     'text' => 'Switches y Routers',
+            //     'url'  => 'netlan/admin/switchs',
+            //     'icon' => 'fas fa-fw fa-random',
+            // ],
+            // [
+            //     'can'  => 'admin.ports.index',
+            //     'text' => 'Puertos Patch Panel',
+            //     'url'  => 'netlan/admin/ports',
+            //     'icon' => 'fas fa-fw fa-plug',
+            // ],
+            // [
+            //     'text' => 'Puertos Switch',
+            //     'url'  => 'netlan/admin/switchs',
+            //     'icon' => 'fas fa-fw fa-tty',
+            // ],
             [
                 'can'  => 'admin.connections.index',
                 'text' => 'Conexiones',
