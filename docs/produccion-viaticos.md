@@ -12,6 +12,13 @@ El menú general ya no contiene los accesos anteriores a viáticos.
   No se inventan distancias ni se reemplazan los datos existentes.
 - En Calcular viático, seleccionar origen y ciudad. El servidor consulta la
   distancia del catálogo, sin aceptar kilómetros manipulados del navegador.
+- Si el destino no está registrado, elegir **Otra ciudad**, escribir su nombre y
+  kilómetros de ida. Al guardar se crean la ciudad y el viático juntos; queda
+  guardado el kilometraje desde el origen seleccionado. El otro origen permanece
+  sin configurar. No se requiere salir del formulario ni administrar el catálogo.
+  Un nombre ya registrado se rechaza para utilizar su entrada existente.
+  Al cambiar de origen se limpia el kilometraje manual para evitar reutilizar
+  por error la distancia de la otra ruta.
 - Indicar mano de obra como **monto total del trabajo en lempiras**. Se suma
   una sola vez; no se multiplica por días ni técnicos.
 - Detalle, historial y PDF muestran mano de obra y total general.
