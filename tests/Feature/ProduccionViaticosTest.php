@@ -21,10 +21,16 @@ class ProduccionViaticosTest extends TestCase
         // Pruebas aisladas: nunca ejecutar migraciones sobre la base configurada del servidor.
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         DB::purge('sqlite');
+        (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->up();
         (require database_path('migrations/2026_02_05_112230_create_ciudades_table.php'))->up();
         (require database_path('migrations/2026_02_05_113521_create_viaticos_table.php'))->up();
         (require database_path('migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php'))->up();
         Gate::before(fn () => $this->permitir);
+        $this->withoutExceptionHandling([
+            \Illuminate\Auth\AuthenticationException::class,
+            \Illuminate\Auth\Access\AuthorizationException::class,
+            \Illuminate\Validation\ValidationException::class,
+        ]);
     }
 
     protected function login(): void
