@@ -57,7 +57,7 @@ class FotoService
             return $path ? $this->imageInfo($path) : null;
         }
         $parts = array_map(fn ($v) => Str::upper(Str::slug($v ?? '', '_')),
-            [$alumno->curso, $alumno->modalidad, $alumno->seccion]);
+            [$alumno->curso ?? 'sin_curso', $alumno->modalidad ?? 'sin_modalidad', $alumno->seccion ?? 'sin_seccion']);
         $nombre = Str::upper(Str::slug($alumno->nombres.' '.$alumno->apellidos, '_'));
         foreach (['jpg', 'jpeg', 'png', 'webp', 'JPG', 'PNG'] as $ext) {
             $path = $this->inside(public_path('uploads/Crey/Estudiantes'), implode('/', $parts).'/'.$nombre.'.'.$ext);

@@ -100,7 +100,7 @@
     @endforelse
     </tbody>
 </table>
-{{ $alumnos->links() }}
+{{ $alumnos->links('pagination::bootstrap-4') }}
 </div></div>
 <div class="card"><div class="card-header"><h3 class="card-title">Últimos lotes</h3></div><div class="card-body table-responsive">
 <table class="table table-sm"><thead><tr><th>Fecha</th><th>Acción</th><th>Incluidos</th><th>Sin foto</th><th>Marcados impresos</th></tr></thead>

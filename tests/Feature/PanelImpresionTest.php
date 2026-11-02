@@ -137,14 +137,18 @@ class PanelImpresionTest extends TestCase
     {
         $this->login();
         $this->alumno();
+        for ($i = 0; $i < 50; $i++) {
+            $this->alumno();
+        }
         $otro = $this->alumno(true, ['seccion' => 'B']);
         $otraModalidad = $this->alumno(true, ['modalidad' => 'OTRA']);
         $zip = $this->abrirZip($this->post(route('impresion.zip'), [
             'alcance' => 'seccion', 'curso' => 'SEPTIMO', 'seccion' => 'A',
             'modalidad' => 'GENERAL', 'estado' => 'todos', 'marcar_impresos' => 1,
         ]));
-        $this->assertEquals(2, $zip->numFiles);
+        $this->assertEquals(52, $zip->numFiles);
         $zip->close();
+        $this->assertEquals(51, Crey::whereNotNull('impreso_at')->count());
         $this->assertNull($otro->fresh()->impreso_at);
         $this->assertNull($otraModalidad->fresh()->impreso_at);
     }
@@ -271,5 +275,33 @@ class PanelImpresionTest extends TestCase
         $this->assertSame('_CON', $service->safeName('CON'));
         $this->assertTrue(Schema::hasColumns('creys', ['id', 'curso', 'foto_path', 'impreso_at', 'impreso_por']));
         $this->assertSame('creys', (new Crey())->getTable());
+    }
+
+    public function test_reconoce_fotos_heredadas_por_carpeta_y_por_codigo(): void
+    {
+        $alumno = $this->alumno(true, ['nombres' => 'PRUEBA '.Str::uuid()]);
+        $original = storage_path('app/impresion/'.$alumno->foto_path);
+        $this->archivos[] = $original;
+        $nombre = Str::upper(Str::slug($alumno->nombres.' '.$alumno->apellidos, '_'));
+        $legacy = public_path('uploads/Crey/Estudiantes/SEPTIMO/GENERAL/A/'.$nombre.'.png');
+        if (!is_dir(dirname($legacy))) {
+            mkdir(dirname($legacy), 0775, true);
+        }
+        copy($original, $legacy);
+        $this->archivos[] = $legacy;
+        $alumno->foto_path = null;
+        $alumno->save();
+        $service = app(FotoService::class);
+        $this->assertSame(realpath($legacy), $service->resolve($alumno)['path']);
+        unlink($legacy);
+        $codigo = 'PRUEBA_'.Str::uuid();
+        $archivo = storage_path('app/public/carnetizacion/crey/'.$codigo.'.png');
+        if (!is_dir(dirname($archivo))) {
+            mkdir(dirname($archivo), 0775, true);
+        }
+        copy($original, $archivo);
+        $this->archivos[] = $archivo;
+        $alumno->observaciones = $codigo;
+        $this->assertSame(realpath($archivo), $service->resolve($alumno)['path']);
     }
 }
