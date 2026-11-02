@@ -1,123 +1,47 @@
 <?php
 
 namespace Modules\Impresion\Imports;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
+
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Modules\Impresion\Entities\Crey;
+use Modules\Impresion\Services\FotoService;
 
 class ImpresionesImport implements ToModel, WithHeadingRow
 {
-public function model(array $row)
-{
-    if (empty($row['dni'])) {
-        return null;
-    }
-
-    $nombreSeparado = $this->separarNombre($row['nombre'] ?? '');
-    $foto = $row['foto'] ?? null;
-
-    if ($foto) {
-        // Aseguramos que tenga extensión para buscar el archivo
-        $nombreArchivoBusqueda = Str::endsWith($foto, '.jpg') ? $foto : $foto . '.jpg';
-
-        $this->procesarImagen(
-            $nombreArchivoBusqueda,
-            $nombreSeparado['nombres'],
-            $nombreSeparado['apellidos'],
-            $row['curso'] ?? 'sin_curso',
-            $row['seccion'] ?? 'sin_seccion',
-            $row['modalidad'] ?? 'sin_modalidad'
-        );
-    }
-
-    return new Crey([
-        'curso' => $row['curso'] ?? null,
-        'modalidad' => $row['modalidad'] ?? null,
-        'seccion' => $row['seccion'] ?? null,
-        'dni' => $row['dni'],
-        'nombres' => $nombreSeparado['nombres'],
-        'apellidos' => $nombreSeparado['apellidos'],
-        'observaciones' => $row['foto'] ?? 'Pendiente',
-    ]);
-}
-private function procesarImagen($nombreOriginal, $nombres, $apellidos, $curso, $seccion, $modalidad)
-{
-    try {
-
-        $rutaOrigen = "H:/Cristo rey/crey/" . trim($nombreOriginal);
-
-        $cursoFolder = Str::upper(Str::slug($curso, '_'));
-        $modalidadFolder = Str::upper(Str::slug($modalidad, '_'));
-        $seccionFolder = Str::upper(Str::slug($seccion, '_'));
-
-        $pathDestinoBase = public_path(
-            "uploads/Crey/Estudiantes/{$cursoFolder}/{$modalidadFolder}/{$seccionFolder}"
-        );
-
-        // Nombre limpio
-        $nuevoNombre = Str::upper(
-            Str::slug($nombres . ' ' . $apellidos, '_')
-        ) . '.jpg';
-
-        $rutaCompletaDestino = $pathDestinoBase . '/' . $nuevoNombre;
-
-        // DEBUG
-        if (!File::exists($rutaOrigen)) {
-
-            dd([
-                'error' => 'NO EXISTE ARCHIVO ORIGEN',
-                'ruta' => $rutaOrigen
-            ]);
-        }
-
-        // Crear carpeta
-        if (!File::isDirectory($pathDestinoBase)) {
-            File::makeDirectory($pathDestinoBase, 0775, true, true);
-        }
-
-        // Copiar
-        $copiado = File::copy($rutaOrigen, $rutaCompletaDestino);
-
-        if (!$copiado) {
-            dd([
-                'error' => 'NO SE PUDO COPIAR',
-                'origen' => $rutaOrigen,
-                'destino' => $rutaCompletaDestino
-            ]);
-        }
-
-        return $rutaCompletaDestino;
-
-    } catch (\Exception $e) {
-
-        dd([
-            'mensaje' => $e->getMessage(),
-            'linea' => $e->getLine()
-        ]);
-    }
-}
-      private function separarNombre($nombreSeparado)
+    public function model(array $row)
     {
-
-        $nombreSeparado = trim(mb_strtoupper($nombreSeparado));
-
-        $partes = preg_split('/\s+/', $nombreSeparado);
-
-        if (count($partes) < 3) {
-            return [
-                'nombres' => $nombreSeparado,
-                'apellidos' => ''
-            ];
+        $dni = trim((string) ($row['dni'] ?? ''));
+        if ($dni === '') {
+            return null;
+        }
+        $nombre = preg_split('/\s+/u', trim((string) ($row['nombre'] ?? '')), -1, PREG_SPLIT_NO_EMPTY);
+        $nombres = trim((string) ($row['nombres'] ?? implode(' ', array_slice($nombre, 0, count($nombre) > 2 ? -2 : 1))));
+        $apellidos = trim((string) ($row['apellidos'] ?? implode(' ', array_slice($nombre, count($nombre) > 2 ? -2 : 1))));
+        if ($nombres === '') {
+            throw new \InvalidArgumentException('Una fila con DNI no tiene nombre.');
+        }
+        $alumno = Crey::firstOrNew(['dni' => $dni]);
+        $codigoFoto = trim((string) ($row['foto'] ?? ''));
+        $alumno->fill([
+            'curso' => $row['curso'] ?? null,
+            'modalidad' => $row['modalidad'] ?? null,
+            'seccion' => $row['seccion'] ?? null,
+            'nombres' => $nombres,
+            'apellidos' => $apellidos,
+            'observaciones' => $codigoFoto ?: 'Pendiente',
+        ]);
+        // La carpeta original es opcional y se configura por servidor, nunca se usa H: fijo.
+        // Si no hay foto física, se importa el alumno y el panel mostrará "Sin foto".
+        if (!$alumno->foto_path && $codigoFoto !== ''
+            && ($foto = app(FotoService::class)->importOriginal($codigoFoto))) {
+            $alumno->foto_path = $foto;
+        }
+        if ($alumno->isDirty(['curso', 'modalidad', 'seccion', 'nombres', 'apellidos', 'observaciones', 'foto_path'])) {
+            $alumno->impreso_at = null;
+            $alumno->impreso_por = null;
         }
 
-        $apellidos = implode(' ', array_slice($partes, -2));
-        $nombres = implode(' ', array_slice($partes, 0, -2));
-
-        return [
-            'nombres' => ucwords(mb_strtolower($nombres)),
-            'apellidos' => ucwords(mb_strtolower($apellidos))
-        ];
+        return $alumno;
     }
 }

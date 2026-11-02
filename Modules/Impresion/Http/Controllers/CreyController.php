@@ -36,8 +36,8 @@ public function index()
                 WHEN curso = 'DUODECIMO' THEN 6
             END as orden_curso
         "),
-        DB::raw("SUM(CASE WHEN observaciones = 'Pendiente' THEN 1 ELSE 0 END) as pendientes"),
-        DB::raw("SUM(CASE WHEN observaciones != 'Pendiente' THEN 1 ELSE 0 END) as completos")
+        DB::raw("SUM(CASE WHEN impreso_at IS NULL THEN 1 ELSE 0 END) as pendientes"),
+        DB::raw("SUM(CASE WHEN impreso_at IS NOT NULL THEN 1 ELSE 0 END) as completos")
     )
     ->groupBy('curso', 'seccion','modalidad')
     ->orderBy('orden_curso')
@@ -45,8 +45,8 @@ public function index()
     ->get();
       
     $totales = Crey::select(
-        DB::raw("SUM(CASE WHEN observaciones = 'Pendiente' THEN 1 ELSE 0 END) as total_pendientes"),
-        DB::raw("SUM(CASE WHEN observaciones != 'Pendiente' THEN 1 ELSE 0 END) as total_completos")
+        DB::raw("SUM(CASE WHEN impreso_at IS NULL THEN 1 ELSE 0 END) as total_pendientes"),
+        DB::raw("SUM(CASE WHEN impreso_at IS NOT NULL THEN 1 ELSE 0 END) as total_completos")
     )
     ->first();
 
@@ -99,7 +99,7 @@ public function index()
 // dd($request);
     $item = Crey::findOrFail($id);
 
-    $request->validate([
+    $data = $request->validate([
         'nombres' => 'required|string|max:255',
         'apellidos' => 'required|string|max:255',
         'dni' => 'required|string|max:20',
@@ -108,7 +108,12 @@ public function index()
         'modalidad' => 'required|string|max:50',
     ]);
 
-    $item->update($request->all());
+    $item->fill($data);
+    if ($item->isDirty(['nombres', 'apellidos', 'curso', 'seccion', 'modalidad'])) {
+        $item->impreso_at = null;
+        $item->impreso_por = null;
+    }
+    $item->save();
 
     return back()->with('success', 'Registro actualizado correctamente');
 }
@@ -214,4 +219,5 @@ public function index()
     // {
     //     //
     // }
+
 

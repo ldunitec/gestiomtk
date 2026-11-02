@@ -553,6 +553,12 @@ return [
                 'icon' => 'fas fa-fw fa-file-excel',
             ],
             [
+                'can' => 'admin.alumnos.crey',
+                'text' => 'Panel de impresión',
+                'route' => 'impresion.panel',
+                'icon' => 'fas fa-fw fa-print',
+            ],
+            [
                 'can'  => 'admin.alumnos.crey',
                 'text' => 'Importar CREY',
                 'url'  => 'admin/alumnos/crey',
@@ -800,4 +806,5 @@ return [
 
     'livewire' => false,
 ];
+
 
