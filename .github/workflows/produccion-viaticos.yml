@@ -1,0 +1,46 @@
+name: Validar viaticos de Produccion
+
+on:
+  pull_request:
+    paths:
+      - 'Modules/Produccion/**'
+      - 'app/Models/Viatico.php'
+      - 'app/Models/Ciudad.php'
+      - 'database/migrations/*viaticos*'
+      - 'tests/Feature/ProduccionViaticosTest.php'
+      - 'tests/Frontend/viaticos-selector.test.cjs'
+      - '.github/workflows/produccion-viaticos.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  viaticos:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Validar sintaxis PHP
+        run: |
+          php -l Modules/Produccion/Http/Controllers/CiudadController.php
+          php -l Modules/Produccion/Http/Controllers/ViaticoController.php
+          php -l Modules/Produccion/Services/ViaticoCalculator.php
+          php -l database/migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php
+      - name: Probar calculos, permisos, catalogo y PDF
+        run: vendor/bin/phpunit tests/Feature/ProduccionViaticosTest.php
+      - name: Probar selector de kilometraje
+        run: node --test tests/Frontend/viaticos-selector.test.cjs

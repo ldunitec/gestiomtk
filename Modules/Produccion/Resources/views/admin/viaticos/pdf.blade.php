@@ -94,6 +94,10 @@
             <td>{{ now()->format('d/m/Y') }}</td>
         </tr>
         <tr>
+            <th>Origen</th>
+            <td colspan="3">{{ $viatico->origen ?? 'No registrado (viático anterior)' }}</td>
+        </tr>
+        <tr>
             <th>Destino</th>
             <td colspan="3">{{ $viatico->ciudad }}</td>
         </tr>
@@ -103,7 +107,7 @@
 
     <table>
         <tr>
-            <th>Distancia total</th>
+            <th>Distancia de ida</th>
             <td>{{ number_format($viatico->distancia_km, 2) }} km</td>
             <th>Días</th>
             <td>{{ $viatico->dias }}</td>
@@ -115,7 +119,7 @@
             <td>{{ $viatico->cantidad_tecnicos }}</td>
         </tr>
         <tr>
-            <th>Cantidad de peajes</th>
+            <th>Peajes (L)</th>
             <td>{{ $viatico->peajes }}</td>
             <th> </th>
             <td> </td>
@@ -162,8 +166,12 @@
                     L {{ number_format($viatico->extra, 2) }}
                 </td>
             </tr>
+            <tr>
+                <td>Mano de obra (monto total)</td>
+                <td class="text-right">L {{ number_format($viatico->mano_obra ?? 0, 2) }}</td>
+            </tr>
             <tr class="total">
-                <td>TOTAL DE VIÁTICOS</td>
+                <td>TOTAL GENERAL (VIÁTICOS + MANO DE OBRA)</td>
                 <td class="text-right">
                     L {{ number_format($viatico->total, 2) }}
                 </td>
@@ -190,3 +198,4 @@
 
 </body>
 </html>
+

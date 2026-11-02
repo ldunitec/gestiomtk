@@ -8,7 +8,7 @@
             <h1 class="m-0 text-dark font-weight-bold">
                 <i class="fas fa-file-invoice-dollar text-primary mr-2"></i>Gestión de Viáticos
             </h1>
-            <p class="text-muted mb-0">Listado general de viáticos calculados.</p>
+            <p class="text-muted mb-0">Producción · Viáticos y mano de obra.</p>
         </div>
         <a href="{{ route('admin.viaticos.create') }}" class="btn btn-primary shadow-sm">
             <i class="fas fa-plus-circle mr-1"></i> Nuevo Viático
@@ -31,11 +31,13 @@
                         <thead class="thead-light">
                             <tr>
                                 <th>Ciudad</th>
+                                <th>Origen</th>
                                 <th class="text-center">Distancia</th>
                                 <th class="text-right">Hospedaje</th>
                                 <th class="text-right">Combustible</th>
                                 <th class="text-right">Alimentación</th>
                                 <th class="text-right">Extra</th>
+                                <th class="text-right">Mano de obra</th>
                                 <th class="text-right">Total</th>
                                 <th class="text-center" style="width: 120px;">Acciones</th>
                             </tr>
@@ -74,8 +76,13 @@
                 columns: [{
                         data: 'ciudad',
                         render: function(data) {
-                            return `<i class="fas fa-map-marker-alt text-danger mr-1"></i> <strong>${data}</strong>`;
+                            return $('<span>').text(data).html();
                         }
+                    },
+                    {
+                        data: 'origen',
+                        defaultContent: 'No registrado',
+                        render: $.fn.dataTable.render.text()
                     },
                     {
                         data: 'distancia_km',
@@ -105,6 +112,12 @@
                         render: d => 'L. ' + parseFloat(d).toFixed(2)
                     },
                     {
+                        data: 'mano_obra',
+                        defaultContent: 0,
+                        className: 'text-right',
+                        render: d => 'L. ' + Number(d || 0).toFixed(2)
+                    },
+                    {
                         data: 'total',
                         className: 'text-right font-weight-bold text-success text-md',
                         render: d => 'L. ' + parseFloat(d).toFixed(2)
@@ -116,8 +129,8 @@
                         orderable: false,
                         render: function(id) {
                             // Generamos la base del URL respetando el subdominio o carpeta (/public) donde esté alojada la app
-                            var urlShow = "{{ url('/admin/viaticos') }}/" + id;
-                            var urlPdf = "{{ url('/admin/viaticos/pdf') }}/" + id;
+                            var urlShow = @json(route('admin.viaticos.show', ['id' => '__ID__'])) .replace('__ID__', id);
+                            var urlPdf = @json(route('admin.viaticos.pdf', ['id' => '__ID__'])) .replace('__ID__', id);
 
                             return `
             <div class="btn-group btn-group-sm">
@@ -136,3 +149,4 @@
         });
     </script>
 @stop
+

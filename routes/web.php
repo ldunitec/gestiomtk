@@ -39,7 +39,6 @@ use App\Http\Controllers\Auth\ForcePasswordController;
 use App\Http\Controllers\CardDesignController;
 use App\Http\Controllers\CardPrintController;
 use App\Http\Controllers\CarnetController;
-use App\Http\Controllers\CiudadController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IdCardController;
@@ -48,7 +47,6 @@ use App\Http\Controllers\InventarioBTRController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\PrintHistoryController;
 use App\Http\Controllers\VehiculoController;
-use App\Http\Controllers\ViaticoController;
 use App\Http\Controllers\ApunteController;
 use App\Http\Controllers\AsignacionController;
 use App\Http\Controllers\CreyController;
@@ -409,32 +407,9 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-// rutas calcula de viaje
-// Route::prefix('/admin/viaticos')->middleware(['auth'])->group(function () {
-//     Route::get('/', [ViaticoController::class, 'index'])->name(name: 'admin.viaticos.index')->middleware('can:admin.viaticos.index');
-//     Route::get('/create', [ViaticoController::class, 'create'])->name(name: 'admin.viaticos.create')->middleware('can:admin.viaticos.create');
-//     Route::post('/create', [ViaticoController::class, 'store'])->name(name: 'admin.viaticos.store')->middleware('can:admin.viaticos.store');
-//     Route::get('/list', [ViaticoController::class, 'list'])->name('admin.viaticos.list')->middleware('can:admin.viaticos.list');
-//     // Route::get('/liquidacion', [ViaticoController::class, 'liquidacion'])->name(name: 'admin.viaticos.liquidacion');
-//     Route::get('/historial', [ViaticoController::class, 'historial']);
-
-// });
-
-
-Route::prefix('admin')->group(function () {
-    Route::get('/viaticos/ciudades', [ViaticoController::class, 'ciudades'])->name('admin.viaticos.ciudades');
-    Route::get('/viaticos', [ViaticoController::class, 'index'])->name('admin.viaticos.index');
-    Route::get('/viaticos/create', [ViaticoController::class, 'create'])->name('admin.viaticos.create');
-    Route::post('/viaticos', [ViaticoController::class, 'store'])->name('admin.viaticos.store');
-    Route::get('/viaticos/{id}', [ViaticoController::class, 'show'])->name('admin.viaticos.show');
-    Route::post('/liquidaciones/{id}/entregar', [LiquidacionController::class, 'entregar'])->name('admin.liquidaciones.entregar');
-    Route::get('/viaticos/{id}/pdf', [ViaticoController::class, 'pdf'])->name('admin.viaticos.pdf');
-    Route::get('/viaticos-data', [ViaticoController::class, 'list'])->name('viaticos.list');
-    Route::get('/ciudades-data', [ViaticoController::class, 'ciudadData'])->name('ciudades.list');
-});
+Route::post('admin/liquidaciones/{id}/entregar', [LiquidacionController::class, 'entregar'])->name('admin.liquidaciones.entregar');
 // liquidacion
 Route::get('admin/liquidaciones/{id}/pdf', [LiquidacionController::class, 'generarPdf'])->name('admin.liquidaciones.pdf');
-Route::get('admin/viaticos/solicitud', [SolicitudController::class, 'solicitud'])->name('admin.viaticos.solicitud');
 Route::prefix('admin/liquidaciones')->name('admin.liquidaciones.')->group(function () {
     Route::get('/data', [LiquidacionController::class, 'data'])->name('data');
     Route::get('/liquidacion', [LiquidacionController::class, 'liquidacion'])->name('liquidacion');
@@ -446,10 +421,6 @@ Route::prefix('admin/liquidaciones')->name('admin.liquidaciones.')->group(functi
 Route::resource('admin/liquidaciones', LiquidacionController::class)
     ->names('admin.liquidaciones')
     ->only(['index', 'store', 'show']);
-// ciudades
-Route::middleware(['permission:administrar-ciudades'])->group(function () {
-    Route::resource('ciudades', CiudadController::class);
-});
 // vehiculos
 Route::middleware(['permission:administrar-vehiculos'])->group(function () {
     Route::resource('vehiculos', VehiculoController::class);
@@ -629,5 +600,6 @@ Route::middleware(['auth'])->prefix('admin/finanzas')->group(function () {
     // Route::resource('suscripciones',SuscripcionController::class);
 
 });
+
 
 
