@@ -118,7 +118,9 @@ class GymController extends Controller
 
     private function datosAcceso(Request $r): array
     {
-        $r->merge(['codigo' => Str::upper(trim((string) $r->input('codigo')))]);
+        if (is_string($r->input('codigo'))) {
+            $r->merge(['codigo' => Str::upper(trim($r->input('codigo')))]);
+        }
         return $r->validate(['codigo' => ['required', 'string', 'max:40', 'regex:/^[A-Z0-9_-]+$/D'],
             'movimiento' => 'required|in:entrada,salida', 'solicitud_id' => 'required|uuid']);
     }

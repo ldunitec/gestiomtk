@@ -321,6 +321,7 @@ class GymTest extends TestCase
         $this->postJson(route('gym.api.accesos'), $d)->assertOk()->assertJson(['permitido' => true]);
         $this->assertSame(1, Asistencia::count());
         $this->postJson(route('gym.api.accesos'), ['codigo' => $s->codigo, 'movimiento' => 'entrada'])->assertUnprocessable();
+        $this->postJson(route('gym.api.accesos'), ['codigo' => ['invalido'], 'movimiento' => 'entrada', 'solicitud_id' => (string) Str::uuid()])->assertUnprocessable();
     }
 
     public function test_reporte_filtra_fechas_en_honduras_y_csv_escapa_formulas(): void
