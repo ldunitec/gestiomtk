@@ -80,4 +80,3 @@ Las pruebas PHP utilizan SQLite en memoria con tablas mínimas aisladas, sin
 ejecutar todas las migraciones del proyecto. Cubren permisos, rutas, selección
 de origen, validaciones, importes, conservación de distancias y PDF.
 Utilizar PHP 8.3, SQLite y extensiones DOM, GD, mbstring, sockets y zip.
-

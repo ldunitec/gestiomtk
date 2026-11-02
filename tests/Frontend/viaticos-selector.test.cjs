@@ -78,4 +78,3 @@ test('selector: cambia origen, conserva cero, bloquea rutas sin km y restaura al
     assert.equal(nodos.distancia_km.value, '100.25');
     assert.equal(nodos.guardar_viatico.disabled, false);
 });
-

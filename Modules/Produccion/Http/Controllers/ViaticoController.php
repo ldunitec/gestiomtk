@@ -109,4 +109,3 @@ class ViaticoController extends Controller
         return response()->json(['data' => Viatico::orderByDesc('id')->get()]);
     }
 }
-
