@@ -7,7 +7,7 @@
         <div>
             <h1 class="m-0 text-dark">Detalle de Viáticos</h1>
             <p class="text-muted mb-0">
-                <i class="fas fa-map-marker-alt text-primary mr-1"></i> Destino: <strong>{{ $viatico->ciudad }}</strong>
+                <i class="fas fa-map-marker-alt text-primary mr-1"></i> Origen: <strong>{{ $viatico->origen ?? 'No registrado' }}</strong> · Destino: <strong>{{ $viatico->ciudad }}</strong>
             </p>
         </div>
         <div>
@@ -50,8 +50,8 @@
             <div class="info-box shadow-sm">
                 <span class="info-box-icon bg-secondary elevation-1"><i class="fas fa-route"></i></span>
                 <div class="info-box-content">
-                    <span class="info-box-text">Distancia</span>
-                    <span class="info-box-number">{{ number_format($viatico->distancia_km, 0) }} km</span>
+                    <span class="info-box-text">Distancia de ida</span>
+                    <span class="info-box-number">{{ number_format($viatico->distancia_km, 2) }} km</span>
                 </div>
             </div>
         </div>
@@ -88,6 +88,10 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <tr>
+                                    <td>Mano de obra (monto total)</td>
+                                    <td class="text-right font-weight-bold">L{{ number_format($viatico->mano_obra ?? 0, 2) }}</td>
+                                </tr>
                                 <tr>
                                     <td><i class="fas fa-bed text-muted mr-2"></i> Hospedaje</td>
                                     <td class="text-right font-weight-bold">L{{ number_format($viatico->hospedaje, 2) }}</td>

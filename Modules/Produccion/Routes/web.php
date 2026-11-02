@@ -16,6 +16,29 @@ use Modules\Produccion\Http\Controllers\AgendaController;
 use Modules\Produccion\Http\Controllers\Agendav2Controller;
 use Illuminate\Support\Facades\Route;
 use Modules\Produccion\Http\Controllers\TaskController;
+use Modules\Produccion\Http\Controllers\ViaticoController;
+use Modules\Produccion\Http\Controllers\CiudadController;
+use App\Http\Controllers\SolicitudController;
+
+// Se conservan los nombres de ruta y las tablas para mantener los registros existentes.
+Route::middleware(['auth', 'can:admin.viaticos.index'])
+    ->prefix('produccion/admin/viaticos')
+    ->group(function () {
+        Route::get('/', [ViaticoController::class, 'index'])->name('admin.viaticos.index');
+        Route::get('/create', [ViaticoController::class, 'create'])->name('admin.viaticos.create');
+        Route::post('/', [ViaticoController::class, 'store'])->name('admin.viaticos.store');
+        Route::get('/data', [ViaticoController::class, 'list'])->name('viaticos.list');
+        Route::get('/solicitud', [SolicitudController::class, 'solicitud'])->name('admin.viaticos.solicitud');
+        Route::get('/ciudades-data', [CiudadController::class, 'list'])->name('ciudades.list');
+        Route::middleware('can:administrar-ciudades')->group(function () {
+            Route::get('/ciudades', [CiudadController::class, 'index'])->name('admin.viaticos.ciudades');
+            Route::post('/ciudades', [CiudadController::class, 'store'])->name('produccion.admin.viaticos.ciudades.store');
+            Route::put('/ciudades/{id}', [CiudadController::class, 'update'])
+                ->whereNumber('id')->name('produccion.admin.viaticos.ciudades.update');
+        });
+        Route::get('/{id}/pdf', [ViaticoController::class, 'pdf'])->whereNumber('id')->name('admin.viaticos.pdf');
+        Route::get('/{id}', [ViaticoController::class, 'show'])->whereNumber('id')->name('admin.viaticos.show');
+    });
 
 Route::prefix('produccion')->group(function () {
     Route::get('/', 'ProduccionController@index');

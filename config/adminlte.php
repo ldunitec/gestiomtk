@@ -466,7 +466,7 @@ return [
         'icon' => 'far fa-fw fa-calendar-alt',
     ],
     [
-        'text'    => 'Gastos de Viaje',
+        'text'    => 'Liquidaciones',
         'icon'    => 'fas fa-fw fa-plane-departure',
         'submenu' => [
             [
@@ -478,16 +478,6 @@ return [
                 'text' => 'Liquidaciones',
                 'url'  => 'admin/liquidaciones/liquidacion',
                 'icon' => 'fas fa-fw fa-file-invoice-dollar',
-            ],
-            [
-                'text' => 'Cálculo de Viáticos',
-                'url'  => 'admin/viaticos/create',
-                'icon' => 'fas fa-fw fa-calculator',
-            ],
-            [
-                'text' => 'Solicitar Viático',
-                'url'  => 'admin/viaticos/solicitud',
-                'icon' => 'fas fa-fw fa-paper-plane',
             ],
         ],
     ],
@@ -512,12 +502,19 @@ return [
                 'url'  => 'admin/marcaciones',
                 'icon' => 'fas fa-fw fa-clock',
             ],
-            [
-                'can'  => 'admin.viaticos.index',
-                'text' => 'Viáticos',
-                'url'  => 'admin/viaticos',
-                'icon' => 'fas fa-fw fa-wallet',
-            ],
+        ],
+    ],
+
+    ['header' => 'PRODUCCIÓN'],
+    [
+        'text' => 'Viáticos',
+        'icon' => 'fas fa-fw fa-wallet',
+        'can' => 'admin.viaticos.index',
+        'submenu' => [
+            ['text' => 'Historial de viáticos', 'route' => 'admin.viaticos.index', 'icon' => 'fas fa-fw fa-list'],
+            ['text' => 'Calcular viático', 'route' => 'admin.viaticos.create', 'icon' => 'fas fa-fw fa-calculator'],
+            ['text' => 'Ciudades y kilometraje', 'route' => 'admin.viaticos.ciudades', 'icon' => 'fas fa-fw fa-map-marked-alt', 'can' => 'administrar-ciudades'],
+            ['text' => 'Solicitar viático', 'route' => 'admin.viaticos.solicitud', 'icon' => 'fas fa-fw fa-paper-plane'],
         ],
     ],
 
@@ -803,3 +800,4 @@ return [
 
     'livewire' => false,
 ];
+
