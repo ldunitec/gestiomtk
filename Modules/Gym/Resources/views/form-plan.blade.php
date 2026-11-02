@@ -1,0 +1,5 @@
+<div class="row">
+@foreach(['nombre' => ['Nombre','text', $p?->nombre, null, null], 'dias' => ['Días','number',$p?->dias ?? 30,1,3650], 'precio' => ['Precio ('.config('gym.moneda').')','number', $p ? number_format($p->precio_centavos/100,2,'.','') : '0.00',0,'9999999.99'], 'limite_visitas' => ['Visitas (vacío = ilimitadas)','number',$p?->limite_visitas,1,100000]] as $campo => $op)
+<div class="form-group col-md-3"><label for="{{ $prefijo }}-{{ $campo }}">{{ $op[0] }}</label><input id="{{ $prefijo }}-{{ $campo }}" name="{{ $campo }}" type="{{ $op[1] }}" class="form-control" value="{{ $op[2] }}" @if($campo !== 'limite_visitas') required @endif @if($op[1] === 'number') min="{{ $op[3] }}" max="{{ $op[4] }}" step="{{ $campo === 'precio' ? '0.01' : '1' }}" @else maxlength="100" @endif></div>
+@endforeach
+</div><div class="form-group"><label for="{{ $prefijo }}-activo">Disponible para nuevas membresías</label><select id="{{ $prefijo }}-activo" name="activo" class="form-control"><option value="1" @selected(!$p || $p->activo)>Sí</option><option value="0" @selected($p && !$p->activo)>No</option></select></div><button class="btn btn-primary">Guardar plan</button>
