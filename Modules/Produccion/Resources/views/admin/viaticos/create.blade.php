@@ -19,7 +19,7 @@
         </ul></div>
     @endif
     @if ($ciudades->isEmpty())
-        <div class="alert alert-warning">Agrega ciudades y kilometrajes en Producción → Viáticos → Ciudades y kilometraje, o solicítalo al administrador.</div>
+        <div class="alert alert-info">Todavía no hay ciudades. Selecciona «Otra ciudad» para registrar el destino y sus kilómetros de ida.</div>
     @endif
 
     {{-- Alerta de éxito --}}
@@ -114,6 +114,7 @@
                             <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span></div>
                             <select id="ciudad" name="ciudad_id" class="form-control" required>
                                 <option value="">Selecciona una ciudad</option>
+                                <option value="nueva" @selected(old('ciudad_id') === 'nueva')>Otra ciudad · Agregar al catálogo</option>
                                 @foreach ($ciudades as $ciudad)
                                     <option value="{{ $ciudad->id }}" data-tgu="{{ $ciudad->km_desde_tgu }}" data-sps="{{ $ciudad->km_desde_sps }}"
                                         @selected((string) old('ciudad_id') === (string) $ciudad->id)>{{ $ciudad->nombre }}</option>
@@ -130,6 +131,21 @@
                         </div>
                         <small id="ayuda_distancia" class="form-text text-muted">El combustible ya incluye ida y vuelta en la fórmula actual.</small>
                         <small id="error_distancia" class="text-danger" role="status"></small>
+                    </div>
+                    <div id="datos_nueva_ciudad" class="col-12" hidden>
+                        <div class="row border rounded p-3 mx-0 mb-3 bg-light">
+                            <div class="col-md-6 form-group">
+                                <label for="nueva_ciudad">Nombre de la nueva ciudad</label>
+                                <input id="nueva_ciudad" name="nueva_ciudad" type="text" class="form-control"
+                                       maxlength="255" value="{{ old('nueva_ciudad') }}" disabled>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="km_nueva_ciudad">Km de ida desde <span id="km_nueva_origen">Tegucigalpa</span></label>
+                                <input id="km_nueva_ciudad" name="km_nueva_ciudad" type="number" class="form-control"
+                                       step="0.01" min="0" max="999999.99" value="{{ old('km_nueva_ciudad') }}" disabled>
+                            </div>
+                            <small class="col-12 text-muted">Al guardar el viático, esta ciudad y su kilometraje quedarán disponibles para futuros viajes desde el origen seleccionado.</small>
+                        </div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label for="mano_obra">Costo total de mano de obra (L)</label>
@@ -194,7 +210,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const distancia = document.getElementById('distancia_km');
     const error = document.getElementById('error_distancia');
     const guardar = document.getElementById('guardar_viatico');
+    const datosNuevos = document.getElementById('datos_nueva_ciudad');
+    const nombreNuevo = document.getElementById('nueva_ciudad');
+    const kmNuevo = document.getElementById('km_nueva_ciudad');
+    const etiquetaOrigen = document.getElementById('km_nueva_origen');
     function actualizarDistancia() {
+        const nueva = ciudad.value === 'nueva';
+        datosNuevos.hidden = !nueva;
+        nombreNuevo.disabled = kmNuevo.disabled = !nueva;
+        nombreNuevo.required = kmNuevo.required = nueva;
+        etiquetaOrigen.textContent = origen.value;
+        if (nueva) {
+            distancia.value = kmNuevo.value;
+            guardar.disabled = nombreNuevo.value.trim() === '' || kmNuevo.value === '' || !kmNuevo.checkValidity();
+            error.textContent = '';
+            return;
+        }
         const opcion = ciudad.options[ciudad.selectedIndex];
         const km = opcion ? opcion.getAttribute(origen.value === 'Tegucigalpa' ? 'data-tgu' : 'data-sps') : null;
         const disponible = ciudad.value !== '' && km !== null && km !== '';
@@ -202,10 +233,17 @@ document.addEventListener('DOMContentLoaded', function () {
         guardar.disabled = !disponible;
         error.textContent = ciudad.value && !disponible ? 'Falta registrar el kilometraje desde este origen.' : '';
     }
-    origen.addEventListener('change', actualizarDistancia);
+    origen.addEventListener('change', function () {
+        // Un kilometraje escrito para un origen no se reutiliza para otro.
+        kmNuevo.value = '';
+        actualizarDistancia();
+    });
     ciudad.addEventListener('change', actualizarDistancia);
+    nombreNuevo.addEventListener('input', actualizarDistancia);
+    kmNuevo.addEventListener('input', actualizarDistancia);
     ciudad.form.addEventListener('reset', function () { setTimeout(actualizarDistancia, 0); });
     actualizarDistancia();
 });
 </script>
 @endsection
+

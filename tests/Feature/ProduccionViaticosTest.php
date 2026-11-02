@@ -141,6 +141,65 @@ class ProduccionViaticosTest extends TestCase
         $this->assertStringEndsWith('/'.$viatico->id.'/pdf', route('admin.viaticos.pdf', $viatico->id));
     }
 
+    public function test_crea_ciudad_desde_el_viatico_y_reutiliza_su_kilometraje(): void
+    {
+        $this->login();
+        $payload = $this->payload($this->ciudad(), [
+            'ciudad_id' => 'nueva', 'nueva_ciudad' => '  Nueva   ciudad  ',
+            'km_nueva_ciudad' => '145.75',
+        ]);
+        $this->post(route('admin.viaticos.store'), $payload)->assertRedirect();
+        $ciudad = Ciudad::where('nombre', 'Nueva ciudad')->firstOrFail();
+        $this->assertSame('145.75', $ciudad->km_desde_tgu);
+        $this->assertNull($ciudad->km_desde_sps);
+        $viatico = Viatico::firstOrFail();
+        $this->assertSame($ciudad->id, $viatico->ciudad_id);
+        $this->assertSame('145.75', $viatico->distancia_km);
+        $this->get(route('admin.viaticos.create'))->assertOk()->assertSee('Nueva ciudad');
+        $this->post(route('admin.viaticos.store'), $this->payload($ciudad, [
+            'distancia_km' => 99999, 'nueva_ciudad' => 'Ignorar', 'km_nueva_ciudad' => 99999,
+        ]))->assertRedirect();
+        $this->assertSame(2, Ciudad::count());
+        $this->assertSame('145.75', Viatico::orderByDesc('id')->firstOrFail()->distancia_km);
+    }
+
+    public function test_ciudad_nueva_desde_sps_guarda_cero_y_no_inventa_distancia_tgu(): void
+    {
+        $this->login();
+        $this->post(route('admin.viaticos.store'), $this->payload($this->ciudad(), [
+            'ciudad_id' => 'nueva', 'origen' => 'San Pedro Sula',
+            'nueva_ciudad' => 'Destino local', 'km_nueva_ciudad' => 0,
+        ]))->assertRedirect();
+        $ciudad = Ciudad::where('nombre', 'Destino local')->firstOrFail();
+        $this->assertSame('0.00', $ciudad->km_desde_sps);
+        $this->assertNull($ciudad->km_desde_tgu);
+    }
+
+    public function test_rechaza_ciudad_nueva_sin_nombre_km_invalido_o_nombre_ya_registrado(): void
+    {
+        $this->login();
+        $ciudad = $this->ciudad();
+        $this->postJson(route('admin.viaticos.store'), $this->payload($ciudad, [
+            'ciudad_id' => 'nueva', 'nueva_ciudad' => '', 'km_nueva_ciudad' => -1,
+        ]))->assertUnprocessable()->assertJsonValidationErrors(['nueva_ciudad', 'km_nueva_ciudad']);
+        $this->postJson(route('admin.viaticos.store'), $this->payload($ciudad, [
+            'ciudad_id' => 'nueva', 'nueva_ciudad' => 'CIUDAD DE PRUEBA', 'km_nueva_ciudad' => 10,
+        ]))->assertUnprocessable()->assertJsonValidationErrors('nueva_ciudad');
+        $this->assertSame(1, Ciudad::count());
+        $this->assertSame(0, Viatico::count());
+    }
+
+    public function test_no_guarda_ciudad_si_el_viatico_no_puede_guardarse(): void
+    {
+        $this->login();
+        $this->postJson(route('admin.viaticos.store'), $this->payload($this->ciudad(), [
+            'ciudad_id' => 'nueva', 'nueva_ciudad' => 'No guardar', 'km_nueva_ciudad' => 10,
+            'precio_alimentacion' => 1000000, 'cantidad_tecnicos' => 1000, 'dias' => 365,
+        ]))->assertUnprocessable();
+        $this->assertFalse(Ciudad::where('nombre', 'No guardar')->exists());
+        $this->assertSame(0, Viatico::count());
+    }
+
     public function test_migracion_preserva_historicos_y_formula_anterior_con_mano_de_obra_cero(): void
     {
         $migration = require database_path('migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php');
@@ -169,3 +228,4 @@ class ProduccionViaticosTest extends TestCase
         }
     }
 }
+
