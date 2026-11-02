@@ -103,6 +103,7 @@ class GymTest extends TestCase
         Role::create(['name' => 'ADMINISTRADOR', 'guard_name' => 'web']);
         $this->seed(GymDatabaseSeeder::class);
         $u = $this->login();
+        $u->exists = true;
         $u->assignRole('ADMINISTRADOR');
         $this->permitir = null;
         $this->get(route('gym.index'))->assertOk();
@@ -145,6 +146,22 @@ class GymTest extends TestCase
         $this->assertSame('cerrada', $asistencia->fresh()->estado);
         $this->assertFalse($this->registrar($s, 'salida')->permitido);
         $this->assertSame(1, Asistencia::count());
+    }
+
+    public function test_operacion_completa_por_formularios(): void
+    {
+        $this->login();
+        $s = $this->socio();
+        $p = $this->plan();
+        $this->post(route('gym.membresias', $s), ['plan_id' => $p->id, 'inicio' => '2026-11-02', 'abono' => '200'])->assertRedirect();
+        $m = Membresia::firstOrFail();
+        $this->post(route('gym.pagos', $m), ['importe' => '300', 'referencia' => 'RECIBO-2'])->assertRedirect();
+        $this->assertSame(50000, $m->fresh()->pagado_centavos);
+        $this->post(route('gym.accesos.registrar'), ['codigo' => strtolower($s->codigo), 'movimiento' => 'entrada', 'solicitud_id' => (string) Str::uuid()])
+            ->assertRedirect(route('gym.accesos'))->assertSessionHas('resultado.permitido', true);
+        $this->put(route('gym.socios.actualizar', $s), ['nombres' => 'Ana', 'apellidos' => 'Pérez', 'estado' => 'suspendido'])->assertRedirect();
+        $this->assertSame('suspendido', $s->fresh()->estado);
+        $this->assertSame('RECIBO-2', Pago::latest('id')->firstOrFail()->referencia);
     }
 
     public function test_reintentar_uuid_no_duplica_movimientos_ni_visitas(): void

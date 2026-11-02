@@ -18,7 +18,7 @@ class GymServiceProvider extends ServiceProvider
                 return;
             }
             Route::middleware(['web', 'auth'])->prefix('gym')->name('gym.')->group($root.'/Routes/web.php');
-            Route::middleware(['api', 'auth:sanctum', 'can:gym.accesos'])->prefix('api/gym')->name('gym.api.')->group($root.'/Routes/api.php');
+            Route::middleware(['api', 'auth:sanctum', 'can:gym.accesos', 'throttle:120,1'])->prefix('api/gym')->name('gym.api.')->group($root.'/Routes/api.php');
         });
     }
 }
