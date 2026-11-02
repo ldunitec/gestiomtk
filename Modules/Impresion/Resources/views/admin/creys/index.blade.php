@@ -2,7 +2,8 @@
 @section('title', 'Dashboard')
 
 @section('content_header')
-    <h1>Crey data</h1>
+    <h1>Administrar registros CREY</h1>
+    <a href="{{ route('impresion.panel') }}" class="btn btn-primary">Ir al panel de impresión</a>
 @stop
 @section('content')
     <div class="card">
@@ -43,7 +44,7 @@
                                     <th>Sección</th>
                                     <th>Modalidad</th>
                                     <th>Pendientes</th>
-                                    <th>Completos</th>
+                                    <th>Impresos</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -377,7 +378,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
-            const modalEditar = new bootstrap.Modal(document.getElementById('modalEditar'));
+            const modalEditar = $('#modalEditar');
 
             document.querySelectorAll('.btn-editar').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -398,7 +399,7 @@
                         ':id', id);
 
                     // Abrir modal
-                    modalEditar.show();
+                    modalEditar.modal('show');
                 });
             });
 
@@ -415,3 +416,4 @@
         });
     </script>
 @endsection
+

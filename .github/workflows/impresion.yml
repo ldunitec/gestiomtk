@@ -1,0 +1,40 @@
+name: Validar panel de impresion
+
+on:
+  pull_request:
+    paths:
+      - 'Modules/Impresion/**'
+      - 'public/js/impresion-panel.js'
+      - 'database/migrations/*impresion*'
+      - 'tests/Feature/PanelImpresionTest.php'
+      - '.github/workflows/impresion.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  impresion:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Validar sintaxis
+        run: |
+          find Modules/Impresion/Http/Controllers Modules/Impresion/Services Modules/Impresion/Imports -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l database/migrations/2026_11_02_000002_add_control_impresion_to_creys.php
+          node --check public/js/impresion-panel.js
+      - name: Probar filtros, ZIP, fotos y estados de impresion
+        run: vendor/bin/phpunit tests/Feature/PanelImpresionTest.php

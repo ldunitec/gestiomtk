@@ -9,6 +9,9 @@ class Crey extends Model
 {
     use HasFactory;
 
+    protected $table = 'creys';
+    protected $casts = ['impreso_at' => 'datetime'];
+
    protected $fillable = [
         'curso',
         'modalidad',
@@ -19,3 +22,4 @@ class Crey extends Model
         'observaciones',
     ];
 }
+
