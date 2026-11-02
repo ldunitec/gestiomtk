@@ -299,6 +299,17 @@ return [
     */
 
    'menu' => [
+    [
+        'text' => 'Gym',
+        'icon' => 'fas fa-dumbbell',
+        'submenu' => [
+            ['text' => 'Resumen', 'route' => 'gym.index', 'can' => 'gym.ver', 'icon' => 'fas fa-chart-pie'],
+            ['text' => 'Socios y membresías', 'route' => 'gym.socios', 'can' => 'gym.administrar', 'icon' => 'fas fa-users'],
+            ['text' => 'Planes', 'route' => 'gym.planes', 'can' => 'gym.administrar', 'icon' => 'fas fa-tags'],
+            ['text' => 'Control de acceso', 'route' => 'gym.accesos', 'can' => 'gym.accesos', 'icon' => 'fas fa-door-open'],
+            ['text' => 'Reportes de asistencia', 'route' => 'gym.reportes', 'can' => 'gym.reportes', 'icon' => 'fas fa-list-alt'],
+        ],
+    ],
     // Top Nav Widgets
     [
         'type'         => 'fullscreen-widget',
@@ -806,5 +817,3 @@ return [
 
     'livewire' => false,
 ];
-
-

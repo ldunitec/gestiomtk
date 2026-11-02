@@ -1,0 +1,37 @@
+name: Validar modulo Gym
+
+on:
+  pull_request:
+    paths:
+      - 'Modules/Gym/**'
+      - 'modules_statuses.json'
+      - 'config/adminlte.php'
+      - 'tests/Feature/GymTest.php'
+      - '.github/workflows/gym.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gym:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Validar sintaxis
+        run: find Modules/Gym -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Probar membresias, permisos, pagos, acceso y asistencia
+        run: vendor/bin/phpunit tests/Feature/GymTest.php

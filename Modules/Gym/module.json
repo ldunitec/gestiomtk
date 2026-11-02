@@ -1,0 +1,8 @@
+{
+    "name": "Gym",
+    "alias": "gym",
+    "description": "Socios, membresias, accesos y asistencia",
+    "priority": 0,
+    "providers": ["Modules\\Gym\\Providers\\GymServiceProvider"],
+    "files": []
+}
