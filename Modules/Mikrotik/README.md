@@ -5,7 +5,7 @@ Módulo `Modules/Mikrotik` independiente de las pantallas antiguas de DHCP. Perm
 ## Requisitos y alcance
 
 - Hotspot ya funcionando en el router, con su SSID y portal de inicio de sesión. No crea bridges, DHCP, NAT, VLAN, firewall ni cambia la salida a Internet.
-- RouterOS **7.16 o posterior** para esta implementación de vencimiento por fecha/hora. El módulo verifica versión y ejecución del script antes de habilitar fichas. No actualiza RouterOS.
+- RouterOS **6.49.x (incluido 6.49.23) o 7.x** para esta implementación de vencimiento por fecha/hora. El módulo verifica versión y ejecución del script antes de habilitar fichas. No actualiza RouterOS.
 - Reloj/NTP correcto tanto en el router como en Windows Server. Se rechaza la emisión si la hora reportada por el script difiere más de 90 segundos de la aplicación.
 - API accesible desde el servidor Laravel. Use API-SSL con certificado válido o API sin TLS solo en LAN/VPN confiable. No exponga la API directamente a Internet. El módulo no abre puertos ni modifica servicios del router.
 - Usuario API dedicado con acceso a las operaciones necesarias de lectura/escritura, Hotspot, scripts y scheduler. Las tareas creadas usan `read,write,policy,test`; el usuario de conexión necesita también acceso `api` y suficientes permisos para crear/ejecutar esos objetos. Revise las políticas con su administrador de RouterOS. No se crean cuentas del sistema del router.
@@ -33,6 +33,12 @@ Se usan únicamente tablas nuevas `mt_routers`, `mt_lotes`, `mt_fichas` y `mt_ev
 Abra **MikroTik / Hotspot** en el menú. URL del módulo en la instalación actual: `/gestionmtk/routers-mikrotik`. No se modifica `config/mikrotik.php` ni la conexión antigua del proyecto.
 
 Las claves API y de las fichas se cifran con `APP_KEY`. Respalde y conserve esa clave junto con la base de datos; cambiarla sin migrar los cifrados impedirá recuperar las credenciales.
+
+## Compatibilidad con RouterOS 6.49.23
+
+La lectura de hora usa `/system clock` y su `gmt-offset`, sin `:timestamp` ni `:tonsec`. Se admiten la fecha clásica `nov/03/2026` y la fecha ISO `2026-11-03`. El cálculo considera años bisiestos y convierte a UTC antes de comparar, por lo que conserva los vencimientos originales de las fichas. La preparación exige que el router ejecute el script y devuelva una hora UTC dentro de 90 segundos de la aplicación; si falla, no se habilitan nuevas fichas.
+
+Después de actualizar esta compatibilidad, abra **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** para reinstalar el código de reloj. No hace falta una migración nueva ni actualizar el firmware. La API simulada cubre la aceptación de la versión y el flujo de emisión; el script debe verificarse en el equipo real antes de entregar fichas.
 
 ## Configurar su router
 
@@ -125,6 +131,6 @@ La automatización cubre PHP/Laravel, cifrado, permisos, publicación idempotent
 
 - [HotSpot y propiedades de usuarios](https://manual.mikrotik.com/docs/authentication-authorization-accounting/hotspot-captive-portal/)
 - [Personalización del portal y parámetros de login](https://manual.mikrotik.com/docs/authentication-authorization-accounting/hotspot-captive-portal/hotspot-customisation/)
-- [Lenguaje de scripts, timestamp y tonsec](https://manual.mikrotik.com/docs/developer-guides/scripting/)
+- [Lenguaje de scripts y funciones](https://manual.mikrotik.com/docs/developer-guides/scripting/)
 - [Scheduler](https://help.mikrotik.com/docs/spaces/ROS/pages/40992881/Scheduler)
 - [Librería PHP RouterOS utilizada por el proyecto](https://github.com/EvilFreelancer/routeros-api-php)

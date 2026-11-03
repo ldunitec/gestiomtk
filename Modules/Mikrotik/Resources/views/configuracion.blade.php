@@ -1,6 +1,6 @@
 @extends('mikrotik::layout')
 @section('mt_content')
-<div class="alert alert-info">Use un Hotspot ya configurado. La emisión requiere RouterOS 7.16 o posterior y hora/NTP correctos. API-SSL utiliza el certificado del router; para API sin TLS use únicamente su LAN o VPN.</div>
+<div class="alert alert-info">Use un Hotspot ya configurado. La emisión requiere RouterOS 6.49.x o 7.x y hora/NTP correctos. API-SSL utiliza el certificado del router; para API sin TLS use únicamente su LAN o VPN.</div>
 @foreach($routers as $r)
 <div class="card"><div class="card-header"><strong>{{ $r->nombre }}</strong> · {{ $r->preparado_at ? 'Preparado para emitir fichas' : 'Pendiente de preparación' }}</div><div class="card-body">
 <form method="POST" action="{{ route('mt.actualizar', $r) }}">@csrf @method('PUT') @include('mikrotik::form-router', ['router'=>$r, 'prefijo'=>'r-'.$r->id])</form>

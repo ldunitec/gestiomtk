@@ -206,7 +206,7 @@ class MikrotikHotspotTest extends TestCase
         $this->assertCount(2,$this->api->tablas['/ip/hotspot/user/profile']);
         $this->assertSame('CODIGO ORIGINAL',$this->api->tablas['/ip/hotspot/user/profile'][1]['on-login']);
         $this->assertSame('30s',$this->api->tablas['/system/scheduler'][0]['interval']);
-        $this->assertStringContainsString(':timestamp',ScriptsHotspot::login($r));
+        $this->assertStringContainsString('/system clock get date',ScriptsHotspot::login($r));
         $this->assertStringContainsString('comment~"^'.$r->marcador().':"',ScriptsHotspot::barrido($r));
         foreach ($this->api->escrituras as [$ruta]) {
             $this->assertFalse(str_contains($ruta,'dhcp') || str_contains($ruta,'firewall') || str_contains($ruta,'reboot'));
@@ -215,10 +215,29 @@ class MikrotikHotspotTest extends TestCase
 
     public function test_version_no_compatible_se_rechaza_antes_de_escribir(): void
     {
-        $r=$this->router(false); $this->api->tablas['/system/resource'][0]['version']='6.49.19';
+        $r=$this->router(false); $this->api->tablas['/system/resource'][0]['version']='6.48.7';
         try { app(HotspotService::class)->preparar($this->api,$r); $this->fail('Debió rechazar la versión.'); }
-        catch (ErrorRouter $e) { $this->assertStringContainsString('7.16',$e->getMessage()); }
+        catch (ErrorRouter $e) { $this->assertStringContainsString('6.49',$e->getMessage()); }
         $this->assertCount(0,$this->api->escrituras);
+    }
+
+    public function test_prepara_y_emite_en_routeros_64923_y_7_con_api_simulada(): void
+    {
+        foreach (['6.49.23 (long-term)', '7.1 (stable)', '7.16.2 (stable)'] as $version) {
+            $this->api->tablas['/system/resource'][0]['version']=$version;
+            $r=$this->router();
+            $this->assertSame($version,$r->fresh()->version);
+            $f=$this->lote($r)->fichas()->firstOrFail();
+            $this->assertSame('activa',$f->estado);
+            $this->assertTrue($f->imprimible());
+            foreach ([ScriptsHotspot::login($r), ScriptsHotspot::barrido($r)] as $script) {
+                $this->assertStringNotContainsString(':timestamp',$script);
+                $this->assertStringNotContainsString(':tonsec',$script);
+                $this->assertStringContainsString('/system clock get gmt-offset',$script);
+                $this->assertStringContainsString('janfebmar',$script);
+                $this->assertStringNotContainsString('@RELOJ@',$script);
+            }
+        }
     }
 
     public function test_fichas_de_1_2_y_7_dias_usando_hora_utc(): void
