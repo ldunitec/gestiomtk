@@ -17,6 +17,16 @@ class ViaticoCalculator
             'mano_obra' => round((float) $data['mano_obra'], 2),
         ];
 
-        return $gastos + ['total' => round(array_sum($gastos), 2)];
+        // El impuesto se aplica una sola vez al subtotal completo, incluida mano de obra.
+        // Usar centavos evita errores de coma flotante al redondear medios centavos.
+        $subtotalCentavos = (int) round(array_sum($gastos) * 100);
+        $impuestoCentavos = intdiv($subtotalCentavos * 15 + 50, 100);
+
+        return $gastos + [
+            'subtotal' => $subtotalCentavos / 100,
+            'impuesto_porcentaje' => 15,
+            'impuesto' => $impuestoCentavos / 100,
+            'total' => ($subtotalCentavos + $impuestoCentavos) / 100,
+        ];
     }
 }

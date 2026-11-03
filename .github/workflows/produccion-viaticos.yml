@@ -27,19 +27,34 @@ jobs:
       QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            bootstrap
+            config
+            database
+            Modules
+            resources
+            routes
+            tests
+            storage
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
           tools: composer:v2
           coverage: none
+      - name: Preparar directorio publico requerido por DomPDF
+        run: mkdir -p public
       - run: composer install --prefer-dist --no-interaction --no-progress
       - name: Validar sintaxis PHP
         run: |
           php -l Modules/Produccion/Http/Controllers/CiudadController.php
           php -l Modules/Produccion/Http/Controllers/ViaticoController.php
           php -l Modules/Produccion/Services/ViaticoCalculator.php
+          php -l app/Models/Viatico.php
           php -l database/migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php
+          php -l database/migrations/2026_11_03_000002_add_impuesto_to_viaticos.php
       - name: Probar calculos, permisos, catalogo y PDF
         run: vendor/bin/phpunit tests/Feature/ProduccionViaticosTest.php
       - name: Probar selector de kilometraje

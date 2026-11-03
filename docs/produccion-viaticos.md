@@ -21,17 +21,27 @@ El menú general ya no contiene los accesos anteriores a viáticos.
   por error la distancia de la otra ruta.
 - Indicar mano de obra como **monto total del trabajo en lempiras**. Se suma
   una sola vez; no se multiplica por días ni técnicos.
-- Detalle, historial y PDF muestran mano de obra y total general.
+- Los viáticos nuevos agregan **15% de impuesto sobre el subtotal completo**
+  (combustible, alimentación, peajes, hospedaje, extras y mano de obra).
+  El impuesto se redondea al centavo más cercano, con medios centavos hacia arriba.
+  Subtotal, porcentaje, impuesto y total a pagar quedan guardados en cada viático.
+- Detalle, historial y PDF muestran mano de obra, subtotal, impuesto y total a pagar.
   El PDF también muestra origen y distancia de ida.
 
 La fórmula de combustible se conserva:
 
 `ceil((distancia_ida_km * 2 + 30) / 40) * precio_combustible * 1.15`
 
+El 15% incluido en la fórmula histórica de combustible se conserva como parte
+de ese cálculo; el impuesto solicitado se suma por separado al subtotal completo.
+Por ejemplo: subtotal L 1,000.00 + impuesto L 150.00 = total L 1,150.00.
+
 Los demás cálculos conservan sus reglas anteriores. Distancia y nombre quedan
 guardados en cada viático: editar el catálogo no recalcula registros históricos.
 Los anteriores muestran origen no registrado y mano de obra cero;
-sus totales no se recalculan.
+sus totales no se recalculan. Los viáticos anteriores a la incorporación del
+impuesto mantienen sus importes y muestran **impuesto no registrado**. La nueva
+migración deja los campos fiscales en null y no aplica cargos retroactivos.
 
 Permisos: `admin.viaticos.index` para el módulo y, adicionalmente,
 `administrar-ciudades` para crear/editar el catálogo. Asignarlos desde la
@@ -48,6 +58,7 @@ Set-Location 'C:\Web\gestionmtk'
 git pull --ff-only
 composer dump-autoload --no-dev --optimize
 php artisan migrate --path=database/migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php --force
+php artisan migrate --path=database/migrations/2026_11_03_000002_add_impuesto_to_viaticos.php --force
 php artisan route:clear
 php artisan config:clear
 php artisan view:clear
@@ -58,7 +69,10 @@ Si un comando falla, detenerse antes de continuar.
 **No ejecutar `migrate` sin `--path`**: existen otras migraciones pendientes
 que deben revisarse por separado. La migración amplía `distancia_km` a decimal
 en MariaDB/MySQL, agrega origen, referencia de ciudad y mano de obra, y completa
-`noches`/`extra` solo si faltan. No copia ni borra viajes.
+`noches`/`extra` solo si faltan. La migración del impuesto agrega únicamente
+subtotal, porcentaje e importe del impuesto. No copia ni borra viajes ni cambia
+los totales anteriores. Si ya está instalado el módulo, la única migración nueva
+es `2026_11_03_000002_add_impuesto_to_viaticos.php`.
 
 En IIS, el listado queda en `/gestionmtk/produccion/admin/viaticos`.
 Detalle y PDF utilizan rutas nombradas y respetan `/gestionmtk/`.

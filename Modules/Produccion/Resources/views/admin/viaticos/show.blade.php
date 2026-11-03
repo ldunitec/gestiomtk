@@ -61,7 +61,7 @@
             <div class="info-box shadow-sm bg-success">
                 <span class="info-box-icon bg-white text-success elevation-1"><i class="fas fa-money-bill-wave"></i></span>
                 <div class="info-box-content">
-                    <span class="info-box-text">Total General</span>
+                    <span class="info-box-text">Total a pagar</span>
                     <span class="info-box-number text-lg">L{{ number_format($viatico->total, 2) }}</span>
                 </div>
             </div>
@@ -115,7 +115,27 @@
                             </tbody>
                             <tfoot class="bg-light">
                                 <tr>
-                                    <th class="text-right">Total Liquidación:</th>
+                                    <th class="text-right">Subtotal (viáticos + mano de obra):</th>
+                                    <th class="text-right">L{{ number_format($viatico->subtotal ?? $viatico->total, 2) }}</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-right">
+                                        @if($viatico->impuesto_porcentaje !== null)
+                                            Impuesto ({{ number_format($viatico->impuesto_porcentaje, 0) }}%):
+                                        @else
+                                            Impuesto no registrado (viático anterior):
+                                        @endif
+                                    </th>
+                                    <th class="text-right">
+                                        @if($viatico->impuesto !== null)
+                                            L{{ number_format($viatico->impuesto, 2) }}
+                                        @else
+                                            —
+                                        @endif
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th class="text-right">Total a pagar:</th>
                                     <th class="text-right text-success text-lg">L{{ number_format($viatico->total, 2) }}</th>
                                 </tr>
                             </tfoot>

@@ -25,6 +25,7 @@ class ProduccionViaticosTest extends TestCase
         (require database_path('migrations/2026_02_05_112230_create_ciudades_table.php'))->up();
         (require database_path('migrations/2026_02_05_113521_create_viaticos_table.php'))->up();
         (require database_path('migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php'))->up();
+        (require database_path('migrations/2026_11_03_000002_add_impuesto_to_viaticos.php'))->up();
         Gate::before(fn () => $this->permitir);
         $this->withoutExceptionHandling([
             \Illuminate\Auth\AuthenticationException::class,
@@ -73,13 +74,17 @@ class ProduccionViaticosTest extends TestCase
         $ciudad = $this->ciudad();
         $this->post(route('admin.viaticos.store'), $this->payload($ciudad, [
             'distancia_km' => 999999, 'ciudad' => 'Nombre manipulado',
+            'subtotal' => 1, 'impuesto_porcentaje' => 0, 'impuesto' => 0, 'total' => 1,
         ]))->assertRedirect();
         $viatico = Viatico::firstOrFail();
         $this->assertSame('100.25', $viatico->distancia_km);
         $this->assertSame('Ciudad de prueba', $viatico->ciudad);
         $this->assertSame('1750.50', $viatico->mano_obra);
         $this->assertEquals(828, $viatico->combustible);
-        $this->assertSame('6422.50', $viatico->total);
+        $this->assertSame('6422.50', $viatico->subtotal);
+        $this->assertSame('15.00', $viatico->impuesto_porcentaje);
+        $this->assertSame('963.38', $viatico->impuesto);
+        $this->assertSame('7385.88', $viatico->total);
         $this->assertEquals(1, $viatico->noches);
         $ciudad->update(['nombre' => 'Nombre cambiado', 'km_desde_tgu' => 900]);
         $this->assertSame('100.25', $viatico->fresh()->distancia_km);
@@ -134,9 +139,20 @@ class ProduccionViaticosTest extends TestCase
         $html = view('produccion::admin.viaticos.pdf', compact('viatico'))->render();
         $this->assertStringContainsString('1,750.50', $html);
         $this->assertStringContainsString('6,422.50', $html);
+        $this->assertStringContainsString('IMPUESTO (15%)', $html);
+        $this->assertStringContainsString('963.38', $html);
+        $this->assertStringContainsString('7,385.88', $html);
+        $this->get(route('admin.viaticos.show', $viatico->id))->assertOk()
+            ->assertSee('Impuesto (15%)')->assertSee('963.38')->assertSee('7,385.88');
+        $this->getJson(route('viaticos.list'))->assertOk()->assertJsonPath('data.0.subtotal', '6422.50')
+            ->assertJsonPath('data.0.impuesto', '963.38')->assertJsonPath('data.0.total', '7385.88');
         $pdf = $this->get(route('admin.viaticos.pdf', $viatico->id));
         $pdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF-', $pdf->getContent());
+        $documento = \Barryvdh\DomPDF\Facade\Pdf::loadView('produccion::admin.viaticos.pdf', compact('viatico'))
+            ->setPaper('letter', 'portrait');
+        $documento->output();
+        $this->assertSame(1, $documento->getDomPDF()->getCanvas()->get_page_count(), 'El reporte con impuesto debe caber en una página.');
         $this->assertStringContainsString('/produccion/admin/viaticos', route('admin.viaticos.create'));
         $this->assertStringEndsWith('/'.$viatico->id.'/pdf', route('admin.viaticos.pdf', $viatico->id));
     }
@@ -224,7 +240,59 @@ class ProduccionViaticosTest extends TestCase
             $resultado = $calculator->calculate($data);
             $combustibleAnterior = ceil(($km * 2 + 30) / 40) * 120 * 1.15;
             $this->assertEqualsWithDelta($combustibleAnterior, $resultado['combustible'], 0.001);
-            $this->assertEqualsWithDelta($combustibleAnterior + 2000 + 44 + 1300 + 500, $resultado['total'], 0.001);
+            $this->assertEqualsWithDelta($combustibleAnterior + 2000 + 44 + 1300 + 500, $resultado['subtotal'], 0.001);
+            $this->assertEqualsWithDelta(round($resultado['subtotal'] * 0.15, 2), $resultado['impuesto'], 0.001);
+            $this->assertEqualsWithDelta($resultado['subtotal'] + $resultado['impuesto'], $resultado['total'], 0.001);
         }
+    }
+
+    public function test_impuesto_redondea_a_centavos_y_admite_subtotal_cero(): void
+    {
+        $calculator = new ViaticoCalculator();
+        foreach ([['0.00', 0, 0], ['0.10', 0.02, 0.12], ['0.30', 0.05, 0.35], ['1.10', 0.17, 1.27], ['1000.00', 150, 1150]] as [$manoObra, $impuesto, $total]) {
+            $resultado = $calculator->calculate([
+                'distancia_km' => 0, 'precio_combustible' => 0, 'cantidad_tecnicos' => 1,
+                'dias' => 1, 'precio_alimentacion' => 0, 'precio_peaje' => 0, 'peajes' => 0,
+                'precio_hotel' => 0, 'noches' => 0, 'extra' => 0, 'mano_obra' => $manoObra,
+            ]);
+            $this->assertEquals((float) $manoObra, $resultado['subtotal']);
+            $this->assertEquals($impuesto, $resultado['impuesto']);
+            $this->assertEquals($total, $resultado['total']);
+        }
+    }
+
+    public function test_limite_del_total_incluye_el_impuesto(): void
+    {
+        $this->login();
+        $this->postJson(route('admin.viaticos.store'), $this->payload($this->ciudad(), [
+            'precio_combustible' => 0, 'precio_peaje' => 0, 'precio_hotel' => 0, 'extra' => 0,
+            'mano_obra' => 0, 'dias' => 1, 'noches' => 0, 'peajes' => 0,
+            'precio_alimentacion' => 100000, 'cantidad_tecnicos' => 900,
+        ]))->assertUnprocessable()->assertJsonValidationErrors('mano_obra');
+        $this->assertSame(0, Viatico::count());
+    }
+
+    public function test_migracion_de_impuesto_preserva_totales_y_pdf_historicos(): void
+    {
+        $this->login();
+        $migration = require database_path('migrations/2026_11_03_000002_add_impuesto_to_viaticos.php');
+        $migration->down();
+        $id = DB::table('viaticos')->insertGetId([
+            'ciudad' => 'Viaje anterior al impuesto', 'distancia_km' => 0, 'hospedaje' => 0,
+            'alimentacion' => 500, 'peajes' => 0, 'combustible' => 500,
+            'cantidad_tecnicos' => 1, 'dias' => 1, 'total' => 1000,
+        ]);
+        $migration->up();
+        $viatico = Viatico::findOrFail($id);
+        $this->assertSame('1000.00', $viatico->total);
+        $this->assertNull($viatico->subtotal);
+        $this->assertNull($viatico->impuesto_porcentaje);
+        $this->assertNull($viatico->impuesto);
+        $html = view('produccion::admin.viaticos.pdf', compact('viatico'))->render();
+        $this->assertStringContainsString('IMPUESTO NO REGISTRADO (VIÁTICO ANTERIOR)', $html);
+        $this->assertStringContainsString('1,000.00', $html);
+        $this->assertStringNotContainsString('1,150.00', $html);
+        $this->get(route('admin.viaticos.show', $id))->assertOk()->assertSee('Impuesto no registrado');
+        $this->get(route('admin.viaticos.pdf', $id))->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 }

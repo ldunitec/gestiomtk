@@ -12,6 +12,9 @@ class Viatico extends Model
     protected $casts = [
         'distancia_km' => 'decimal:2',
         'mano_obra' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'impuesto_porcentaje' => 'decimal:2',
+        'impuesto' => 'decimal:2',
         'total' => 'decimal:2',
     ];
 
@@ -29,10 +32,9 @@ class Viatico extends Model
         'cantidad_tecnicos',
         'dias',
         'extra',
+        'subtotal',
+        'impuesto_porcentaje',
+        'impuesto',
         'total',
     ];
 }
-
-
-
-

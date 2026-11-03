@@ -170,8 +170,28 @@
                 <td>Mano de obra (monto total)</td>
                 <td class="text-right">L {{ number_format($viatico->mano_obra ?? 0, 2) }}</td>
             </tr>
+            <tr>
+                <td>SUBTOTAL (VIÁTICOS + MANO DE OBRA)</td>
+                <td class="text-right">L {{ number_format($viatico->subtotal ?? $viatico->total, 2) }}</td>
+            </tr>
+            <tr>
+                <td>
+                    @if($viatico->impuesto_porcentaje !== null)
+                        IMPUESTO ({{ number_format($viatico->impuesto_porcentaje, 0) }}%)
+                    @else
+                        IMPUESTO NO REGISTRADO (VIÁTICO ANTERIOR)
+                    @endif
+                </td>
+                <td class="text-right">
+                    @if($viatico->impuesto !== null)
+                        L {{ number_format($viatico->impuesto, 2) }}
+                    @else
+                        —
+                    @endif
+                </td>
+            </tr>
             <tr class="total">
-                <td>TOTAL GENERAL (VIÁTICOS + MANO DE OBRA)</td>
+                <td>TOTAL A PAGAR</td>
                 <td class="text-right">
                     L {{ number_format($viatico->total, 2) }}
                 </td>
@@ -198,4 +218,3 @@
 
 </body>
 </html>
-
