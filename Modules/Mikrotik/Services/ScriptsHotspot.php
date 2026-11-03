@@ -12,10 +12,10 @@ class ScriptsHotspot
         // mantiene el mismo formato de vencimiento de las fichas ya emitidas.
         return <<<'ROS'
             :local gmtkUtc do={
-                :local f [/system clock get date];
-                :local t [/system clock get time];
+                :local f [:tostr [/system clock get date]];
+                :local t [:tostr [/system clock get time]];
                 :local z [:tostr [/system clock get gmt-offset]];
-                :if ($f != [/system clock get date]) do={ :set f [/system clock get date]; :set t [/system clock get time]; };
+                :if ($f != [:tostr [/system clock get date]]) do={ :set f [:tostr [/system clock get date]]; :set t [:tostr [/system clock get time]]; };
                 :local y 0; :local m 0; :local d 0;
                 :if (([:len $f] = 11) && ([:pick $f 3 4] = "/")) do={
                     :local p [:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $f 0 3]];
