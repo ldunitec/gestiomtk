@@ -264,6 +264,17 @@ class MikrotikHotspotTest extends TestCase
         $this->assertSame('activa',$f->fresh()->estado);
     }
 
+    public function test_interrupcion_de_api_detiene_el_lote_y_reintento_lo_completa(): void
+    {
+        $r=$this->router(); $this->api->perderRespuesta=true;
+        $l=$this->lote($r,1,3);
+        $this->assertCount(1,$this->api->tablas['/ip/hotspot/user']);
+        $this->assertSame(3,$l->fichas()->where('estado','error')->count());
+        app(FichasService::class)->publicar($l,1);
+        $this->assertCount(3,$this->api->tablas['/ip/hotspot/user']);
+        $this->assertSame(3,$l->fichas()->where('estado','activa')->count());
+    }
+
     public function test_sin_preparacion_o_con_reloj_desfasado_no_habilita_fichas(): void
     {
         $r=$this->router(false); $l=$this->lote($r);
@@ -348,7 +359,7 @@ class MikrotikHotspotTest extends TestCase
     public function test_todas_las_pantallas_y_qr_imprimible(): void
     {
         $this->login(); $r=$this->router(); $l=$this->lote($r,2,2); $f=$l->fichas()->firstOrFail();
-        foreach (['mt.index','mt.fichas','mt.configuracion'] as $route) { $this->get(route($route))->assertOk(); }
+        foreach (['mt.index','mt.fichas','mt.configuracion','mt.sesiones.routers'] as $route) { $this->get(route($route))->assertOk(); }
         foreach (['mt.estado','mt.preparacion','mt.sesiones'] as $route) { $this->get(route($route,$r))->assertOk(); }
         $this->get(route('mt.lote',$l))->assertOk()->assertSee($f->usuario);
         $this->get(route('mt.imprimir',$l))->assertOk()->assertSee('<svg',false)->assertSee($f->clave)->assertSee('05/11/2026 12:00:00')->assertHeader('Cache-Control','no-store, private');

@@ -181,6 +181,11 @@ class MikrotikController extends Controller
         return back()->with($n ? 'aviso' : 'ok', $n ? $n.' bloqueos siguen pendientes de confirmación.' : 'Vencimientos y revocaciones conciliados.');
     }
 
+    public function elegirSesiones()
+    {
+        return view('mikrotik::elegir-sesiones', ['routers' => Router::orderBy('nombre')->get()]);
+    }
+
     public function sesiones(Router $router)
     {
         try {

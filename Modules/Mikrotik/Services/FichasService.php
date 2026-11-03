@@ -70,6 +70,8 @@ class FichasService
                 } catch (ErrorRouter $e) {
                     $f->update(['estado' => 'error', 'error' => $e->getMessage()]);
                     $this->evento($r, 'publicar_ficha', false, $actor, $f->id);
+                    // Después de un timeout no se reutiliza un flujo API que podría estar desfasado.
+                    $problema = 'Se interrumpió la publicación del lote. Reintente las fichas pendientes para confirmar su estado.';
                     $errores++;
                 }
             }
@@ -110,6 +112,7 @@ class FichasService
                 } catch (ErrorRouter $e) {
                     $f->update(['error' => $e->getMessage()]);
                     $this->evento($r, 'bloquear_ficha', false, $actor, $f->id);
+                    $api = null;
                     $pendientes++;
                 }
             }

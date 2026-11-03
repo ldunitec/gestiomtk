@@ -6,6 +6,7 @@
 @can('mikrotik.ver')<a class="btn btn-outline-primary mr-2 mb-2" href="{{ route('mt.index') }}">Resumen y routers</a>@endcan
 @can('mikrotik.configurar')<a class="btn btn-outline-primary mr-2 mb-2" href="{{ route('mt.configuracion') }}">Configuración</a>@endcan
 @can('mikrotik.fichas')<a class="btn btn-primary mr-2 mb-2" href="{{ route('mt.fichas') }}">Fichas de visitantes</a>@endcan
+@can('mikrotik.sesiones')<a class="btn btn-outline-primary mr-2 mb-2" href="{{ route('mt.sesiones.routers') }}">Sesiones Hotspot</a>@endcan
 </nav>
 @if(session('ok'))<div class="alert alert-success" role="status">{{ session('ok') }}</div>@endif
 @if(session('aviso'))<div class="alert alert-warning" role="alert">{{ session('aviso') }}</div>@endif

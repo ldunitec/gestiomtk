@@ -25,6 +25,7 @@ Route::middleware('can:mikrotik.fichas')->group(function () {
     Route::post('/routers/{router}/conciliar', [C::class, 'conciliar'])->name('conciliar');
 });
 Route::middleware('can:mikrotik.sesiones')->group(function () {
+    Route::get('/sesiones', [C::class, 'elegirSesiones'])->name('sesiones.routers');
     Route::get('/routers/{router}/sesiones', [C::class, 'sesiones'])->name('sesiones');
     Route::post('/fichas/{ficha}/desconectar', [C::class, 'desconectar'])->name('desconectar');
 });
