@@ -56,7 +56,8 @@ class MikrotikController extends Controller
             if ($router->exists && $router->fichas()->exists()) {
                 foreach (['host','puerto','tls','servidor_hotspot','portal_url','ssid'] as $campo) {
                     $anterior = $campo === 'tls' ? (int) $router->$campo : $router->$campo;
-                    if ((string) $anterior !== (string) $d[$campo]) {
+                    $nuevo = $campo === 'tls' ? (int) $d[$campo] : $d[$campo];
+                    if ((string) $anterior !== (string) $nuevo) {
                         throw \Illuminate\Validation\ValidationException::withMessages([$campo => 'Este router tiene historial de fichas. Registre otro router para cambiar destino, transporte, Hotspot o portal.']);
                     }
                 }

@@ -24,6 +24,17 @@ jobs:
       SESSION_DRIVER: array
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            bootstrap
+            config
+            database
+            Modules
+            resources
+            routes
+            tests
+            storage
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
