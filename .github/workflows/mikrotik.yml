@@ -1,0 +1,48 @@
+name: Validar modulo MikroTik Hotspot
+
+on:
+  pull_request:
+    paths:
+      - 'Modules/Mikrotik/**'
+      - 'config/adminlte.php'
+      - 'modules_statuses.json'
+      - 'tests/Feature/MikrotikHotspotTest.php'
+      - '.github/workflows/mikrotik.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mikrotik:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            bootstrap
+            config
+            database
+            Modules
+            resources
+            routes
+            tests
+            storage
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Validar sintaxis PHP
+        run: find Modules/Mikrotik -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Probar fichas, cifrado, permisos y API simulada
+        run: vendor/bin/phpunit tests/Feature/MikrotikHotspotTest.php

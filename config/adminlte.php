@@ -300,6 +300,16 @@ return [
 
    'menu' => [
     [
+        'text' => 'MikroTik / Hotspot',
+        'icon' => 'fas fa-wifi',
+        'submenu' => [
+            ['text' => 'Resumen y routers', 'route' => 'mt.index', 'can' => 'mikrotik.ver', 'icon' => 'fas fa-network-wired'],
+            ['text' => 'Fichas de visitantes', 'route' => 'mt.fichas', 'can' => 'mikrotik.fichas', 'icon' => 'fas fa-qrcode'],
+            ['text' => 'Sesiones Hotspot', 'route' => 'mt.sesiones.routers', 'can' => 'mikrotik.sesiones', 'icon' => 'fas fa-users'],
+            ['text' => 'Configuración de routers', 'route' => 'mt.configuracion', 'can' => 'mikrotik.configurar', 'icon' => 'fas fa-cogs'],
+        ],
+    ],
+    [
         'text' => 'Gym',
         'icon' => 'fas fa-dumbbell',
         'submenu' => [
