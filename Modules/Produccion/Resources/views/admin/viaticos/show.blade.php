@@ -119,8 +119,20 @@
                                     <th class="text-right">L{{ number_format($viatico->subtotal ?? $viatico->total, 2) }}</th>
                                 </tr>
                                 <tr>
-                                    <th class="text-right">@if($viatico->impuesto_porcentaje !== null)Impuesto ({{ number_format($viatico->impuesto_porcentaje, 0) }}%):@elseImpuesto no registrado (viático anterior):@endif</th>
-                                    <th class="text-right">@if($viatico->impuesto !== null)L{{ number_format($viatico->impuesto, 2) }}@else—@endif</th>
+                                    <th class="text-right">
+                                        @if($viatico->impuesto_porcentaje !== null)
+                                            Impuesto ({{ number_format($viatico->impuesto_porcentaje, 0) }}%):
+                                        @else
+                                            Impuesto no registrado (viático anterior):
+                                        @endif
+                                    </th>
+                                    <th class="text-right">
+                                        @if($viatico->impuesto !== null)
+                                            L{{ number_format($viatico->impuesto, 2) }}
+                                        @else
+                                            —
+                                        @endif
+                                    </th>
                                 </tr>
                                 <tr>
                                     <th class="text-right">Total a pagar:</th>

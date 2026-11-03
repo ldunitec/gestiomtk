@@ -44,6 +44,8 @@ jobs:
           extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
           tools: composer:v2
           coverage: none
+      - name: Preparar directorio publico requerido por DomPDF
+        run: mkdir -p public
       - run: composer install --prefer-dist --no-interaction --no-progress
       - name: Validar sintaxis PHP
         run: |
