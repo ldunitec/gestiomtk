@@ -1,0 +1,8 @@
+<div class="row">
+@foreach(['nombre' => 'Nombre del router', 'host' => 'IP o nombre DNS del router', 'usuario_api' => 'Usuario API', 'servidor_hotspot' => 'Nombre del servidor Hotspot', 'ssid' => 'Nombre de la red Wi-Fi', 'portal_url' => 'URL del portal (terminada en /login)', 'velocidad' => 'Subida / bajada por visitante (ej. 2M/5M)'] as $campo => $label)
+<div class="form-group col-md-6"><label for="{{ $prefijo }}-{{ $campo }}">{{ $label }}</label><input id="{{ $prefijo }}-{{ $campo }}" required name="{{ $campo }}" class="form-control" type="{{ $campo === 'portal_url' ? 'url' : 'text' }}" maxlength="{{ ['host'=>253,'portal_url'=>255,'velocidad'=>40][$campo] ?? 100 }}" value="{{ $router->$campo ?? ($campo === 'velocidad' ? '2M/5M' : '') }}"></div>
+@endforeach
+<div class="form-group col-md-6"><label for="{{ $prefijo }}-password">Clave API {{ $router ? '(vacía para conservar)' : '' }}</label><input id="{{ $prefijo }}-password" name="password" class="form-control" type="password" maxlength="255" autocomplete="new-password" @if(!$router) required @endif></div>
+<div class="form-group col-md-3"><label for="{{ $prefijo }}-puerto">Puerto API</label><input id="{{ $prefijo }}-puerto" required name="puerto" type="number" min="1" max="65535" class="form-control" value="{{ $router->puerto ?? 8729 }}"></div>
+<div class="form-group col-md-3"><label for="{{ $prefijo }}-tls">Transporte</label><select id="{{ $prefijo }}-tls" name="tls" class="form-control"><option value="1" @selected(!$router || $router->tls)>API-SSL (TLS)</option><option value="0" @selected($router && !$router->tls)>API sin TLS · solo LAN/VPN</option></select></div>
+</div><button class="btn btn-primary">Guardar conexión</button>

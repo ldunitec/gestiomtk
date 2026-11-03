@@ -1,0 +1,8 @@
+{
+    "name": "Mikrotik",
+    "alias": "mikrotik",
+    "description": "Control de routers y fichas Hotspot para visitantes",
+    "priority": 0,
+    "providers": ["Modules\\Mikrotik\\Providers\\MikrotikServiceProvider"],
+    "files": []
+}
