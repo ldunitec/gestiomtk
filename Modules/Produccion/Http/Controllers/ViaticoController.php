@@ -79,7 +79,7 @@ class ViaticoController extends Controller
             $data['distancia_km'] = (float) $distancia;
             $gastos = $calculator->calculate($data);
             if ($gastos['total'] > 99999999.99) {
-                throw ValidationException::withMessages(['mano_obra' => 'El total excede el límite permitido de L 99,999,999.99.']);
+                throw ValidationException::withMessages(['mano_obra' => 'El total con impuesto excede el límite permitido de L 99,999,999.99.']);
             }
             return Viatico::create(array_merge($data, $gastos));
         });

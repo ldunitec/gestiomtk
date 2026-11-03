@@ -27,6 +27,17 @@ jobs:
       QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            bootstrap
+            config
+            database
+            Modules
+            resources
+            routes
+            tests
+            storage
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -39,7 +50,9 @@ jobs:
           php -l Modules/Produccion/Http/Controllers/CiudadController.php
           php -l Modules/Produccion/Http/Controllers/ViaticoController.php
           php -l Modules/Produccion/Services/ViaticoCalculator.php
+          php -l app/Models/Viatico.php
           php -l database/migrations/2026_11_02_000001_add_produccion_fields_to_viaticos.php
+          php -l database/migrations/2026_11_03_000002_add_impuesto_to_viaticos.php
       - name: Probar calculos, permisos, catalogo y PDF
         run: vendor/bin/phpunit tests/Feature/ProduccionViaticosTest.php
       - name: Probar selector de kilometraje

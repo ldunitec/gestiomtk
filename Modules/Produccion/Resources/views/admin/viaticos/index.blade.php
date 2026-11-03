@@ -38,7 +38,9 @@
                                 <th class="text-right">Alimentación</th>
                                 <th class="text-right">Extra</th>
                                 <th class="text-right">Mano de obra</th>
-                                <th class="text-right">Total</th>
+                                <th class="text-right">Subtotal</th>
+                                <th class="text-right">Impuesto</th>
+                                <th class="text-right">Total a pagar</th>
                                 <th class="text-center" style="width: 120px;">Acciones</th>
                             </tr>
                         </thead>
@@ -118,6 +120,16 @@
                         render: d => 'L. ' + Number(d || 0).toFixed(2)
                     },
                     {
+                        data: 'subtotal',
+                        className: 'text-right',
+                        render: (d, type, row) => 'L. ' + Number(d ?? row.total).toFixed(2)
+                    },
+                    {
+                        data: 'impuesto',
+                        className: 'text-right',
+                        render: (d, type, row) => d === null ? 'No registrado' : 'L. ' + Number(d).toFixed(2) + ' (' + Number(row.impuesto_porcentaje).toFixed(0) + '%)'
+                    },
+                    {
                         data: 'total',
                         className: 'text-right font-weight-bold text-success text-md',
                         render: d => 'L. ' + parseFloat(d).toFixed(2)
@@ -149,4 +161,3 @@
         });
     </script>
 @stop
-

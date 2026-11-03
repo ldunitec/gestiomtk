@@ -189,6 +189,10 @@
                 </div>
             </div>
 
+            <div class="alert alert-info mx-3" role="note">
+                Se agregará un impuesto del <strong>15% al subtotal completo</strong> de viáticos y mano de obra.
+                El detalle y el reporte mostrarán subtotal, impuesto y total a pagar.
+            </div>
             <div class="card-footer bg-white d-flex justify-content-end">
                 <button type="reset" class="btn btn-default mr-2">
                     <i class="fas fa-undo mr-1"></i> Limpiar
