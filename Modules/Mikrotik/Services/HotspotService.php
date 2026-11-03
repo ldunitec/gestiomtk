@@ -20,8 +20,9 @@ class HotspotService
     {
         $resource = $api->ejecutar('/system/resource/print', ['.proplist' => 'version'])[0] ?? [];
         $version = $resource['version'] ?? '';
-        if (!preg_match('/^(\d+)\.(\d+)(?:\.(\d+))?/', $version, $m) || version_compare($m[1].'.'.$m[2].'.'.($m[3] ?? 0), '7.16.0', '<')) {
-            throw new ErrorRouter('La vigencia por calendario requiere RouterOS 7.16 o posterior. No se modificó la versión del equipo.');
+        if (!preg_match('/^(\d+)\.(\d+)(?:\.(\d+))?/', $version, $m)
+            || !(((int) $m[1] === 6 && (int) $m[2] >= 49) || (int) $m[1] === 7)) {
+            throw new ErrorRouter('El módulo admite RouterOS 6.49.x y 7.x. La protección y la hora deben verificarse antes de emitir fichas.');
         }
         $server = $api->ejecutar('/ip/hotspot/print', ['.proplist' => '.id,name,disabled,invalid'], ['name' => $r->servidor_hotspot])[0] ?? null;
         if (!$server || $this->esSi($server['disabled'] ?? 'no') || $this->esSi($server['invalid'] ?? 'no')) {
