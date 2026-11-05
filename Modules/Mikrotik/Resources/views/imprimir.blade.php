@@ -16,8 +16,12 @@ h1 { font-size:18px; margin:0 0 4mm; } p { margin:6px 0; } .row { display:flex; 
 <main class="grid">
 @foreach($fichas as $f)
 <article class="ficha"><h1>{{ $f->inicio_vigencia === 'permanente' ? 'Internet para empleados' : 'Internet para visitantes' }}</h1><p><strong>Wi-Fi:</strong> {{ $f->router->ssid }}</p><div class="row"><div class="qr">{!! \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(160)->margin(1)->generate($f->qrUrl()) !!}</div><div class="datos"><p>Usuario<br><span class="clave">{{ $f->usuario }}</span></p><p>Clave<br><span class="clave">{{ $f->clave }}</span></p></div></div>
-<p><strong>Válida hasta:</strong><br>{{ $f->vigenciaVisible() }}@if($f->vence_at) · Honduras@endif</p>
-<p class="nota">@if($f->inicio_vigencia === 'permanente')Empleado: acceso hasta revocación manual@elseif($f->inicio_vigencia === 'primer_ingreso'){{ $lote->dias }} {{ $lote->dias == 1 ? 'día' : 'días' }} desde el primer ingreso exitoso. Imprimir no activa ni reinicia el plazo@else{{ $lote->dias }} días desde su creación@endif · 1 dispositivo simultáneo.<br>1. Conéctese al Wi-Fi. 2. Escanee el QR. 3. Ingrese la clave. Conserve esta ficha; no comparta sus credenciales.</p>
+<p><strong>Válida hasta:</strong><br>{{ $f->vigenciaVisible() }}@if($f->vence_at) · Honduras
+@endif</p>
+<p class="nota">@if($f->inicio_vigencia === 'permanente')Empleado: acceso hasta revocación manual
+@elseif($f->inicio_vigencia === 'primer_ingreso'){{ $lote->dias }} {{ $lote->dias == 1 ? 'día' : 'días' }} desde el primer ingreso exitoso. Imprimir no activa ni reinicia el plazo
+@else{{ $lote->dias }} días desde su creación
+@endif · 1 dispositivo simultáneo.<br>1. Conéctese al Wi-Fi. 2. Escanee el QR. 3. Ingrese la clave. Conserve esta ficha; no comparta sus credenciales.</p>
 <p class="nota">{{ $f->router->portal_url }}</p></article>
 @endforeach
 </main></body></html>

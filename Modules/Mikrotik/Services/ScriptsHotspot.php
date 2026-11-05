@@ -101,7 +101,12 @@ class ScriptsHotspot
                 :local dias [:tonum [:pick $pendiente 1 2]];
                 :local fin ($ahora + ($dias * 86400));
                 :if ([/ip hotspot user get $uid comment] = $comentario) do={
-                    /ip hotspot user set $uid comment=("@PREFIJO@:A" . $dias . ":" . $ahora . ":" . $fin);
+                    :do {
+                        /ip hotspot user set $uid comment=("@PREFIJO@:A" . $dias . ":" . $ahora . ":" . $fin);
+                    } on-error={
+                        /ip hotspot active remove [/ip hotspot active find where user=$user];
+                        :error "No se pudo guardar el primer ingreso";
+                    };
                 };
                 :set comentario [/ip hotspot user get $uid comment];
             };

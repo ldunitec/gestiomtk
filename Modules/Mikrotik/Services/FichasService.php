@@ -102,8 +102,12 @@ class FichasService
             $r = Router::whereKey($routerId)->lockForUpdate()->firstOrFail();
             $fichas = $r->fichas()->whereNotIn('estado', ['revocada', 'vencida'])->where(function ($q) {
                 $q->whereNotNull('revocada_at')->orWhere('vence_at', '<=', CarbonImmutable::now('UTC'))
-                    ->orWhere('inicio_vigencia', 'primer_ingreso');
-            })->lockForUpdate()->get();
+                    ->orWhere(function ($v) {
+                        $v->where('inicio_vigencia', 'primer_ingreso')->where(function ($publicada) {
+                            $publicada->where('estado', 'activa')->orWhereNotNull('sincronizada_at')->orWhereNotNull('activada_at');
+                        });
+                    });
+            })->orderByRaw('revocada_at IS NULL ASC')->lockForUpdate()->get();
             if ($fichas->isEmpty()) { return 0; }
             $api = null;
             try { $api = $this->factory->abrir($r); } catch (ErrorRouter $e) {}
@@ -113,7 +117,7 @@ class FichasService
                 try {
                     if (!$api) { throw new ErrorRouter('Router sin conexión. La revocación seguirá pendiente hasta confirmarla.'); }
                     if (!$f->revocada_at) {
-                        $this->hotspot->sincronizar($api, $f);
+                        if ($f->inicio_vigencia === 'primer_ingreso') { $this->hotspot->sincronizar($api, $f); }
                         if (!$f->vencida()) {
                             $f->update(['sincronizada_at' => CarbonImmutable::now('UTC'), 'error' => null]);
                             continue;
