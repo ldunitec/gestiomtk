@@ -30,10 +30,15 @@ class MikrotikMigracionTest extends TestCase
             DB::table('mt_fichas')->insert(['router_id'=>$router,'lote_id'=>$lote,'usuario'=>'V-ANTERIOR',
                 'clave'=>'cifrada','estado'=>'activa','vence_at'=>'2026-11-06 18:00:00']);
             $nueva->up();
+            (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_05_000002_add_impresion_to_mt_fichas.php'))->up();
             $anterior=DB::table('mt_fichas')->first();
             $this->assertSame('emision',$anterior->inicio_vigencia);
             $this->assertSame('2026-11-06 18:00:00',$anterior->vence_at);
             $this->assertNull($anterior->activada_at);
+            $this->assertNull($anterior->impresa_at);
+            $this->assertNull($anterior->deleted_at);
+            DB::table('mt_fichas')->where('id',$anterior->id)->update(['nombre'=>'Luis Díaz', 'impresa_at'=>'2026-11-05 20:00:00', 'impresa_por'=>1]);
+            $this->assertSame('Luis Díaz', DB::table('mt_fichas')->where('id',$anterior->id)->value('nombre'));
             foreach (['primer_ingreso','permanente'] as $modo) {
                 $nuevo=DB::table('mt_lotes')->insertGetId(['solicitud_uuid'=>(string) \Illuminate\Support\Str::uuid(),
                     'router_id'=>$router,'dias'=>$modo==='permanente'?0:1,'cantidad'=>1,'creado_por'=>1,
@@ -46,3 +51,4 @@ class MikrotikMigracionTest extends TestCase
         } finally { $base->down(); }
     }
 }
+

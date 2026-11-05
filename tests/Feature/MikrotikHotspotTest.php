@@ -86,6 +86,7 @@ class MikrotikHotspotTest extends TestCase
         (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->up();
         (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_03_000001_create_mikrotik_visitantes_tables.php'))->up();
         (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_05_000001_add_inicio_vigencia_to_mikrotik.php'))->up();
+        (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_05_000002_add_impresion_to_mt_fichas.php'))->up();
         Gate::before(fn () => $this->permitir);
         Carbon::setTestNow(Carbon::parse('2026-11-03 18:00:00','UTC'));
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-03 18:00:00','UTC'));
@@ -548,6 +549,96 @@ class MikrotikHotspotTest extends TestCase
         $this->assertNull($f->fresh()->vence_at);
     }
 
+    public function test_panel_imprime_activas_sin_imprimir_de_varios_lotes_y_registra_confirmacion(): void
+    {
+        $this->login(); $r=$this->router();
+        $a=$this->lote($r)->fichas()->firstOrFail(); $b=$this->lote($r)->fichas()->firstOrFail();
+        $impresa=$this->lote($r)->fichas()->firstOrFail(); $impresa->update(['impresa_at'=>CarbonImmutable::now('UTC')->subHour(),'impresa_por'=>1]);
+        $error=$this->lote($r)->fichas()->firstOrFail(); $error->update(['estado'=>'error']);
+        $revocada=$this->lote($r)->fichas()->firstOrFail(); app(FichasService::class)->revocar($revocada,1);
+        $antes=$a->only(['estado','vence_at','activada_at','sincronizada_at']); $escrituras=count($this->api->escrituras);
+        $url=route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'pendientes']);
+        $this->get($url)->assertOk()->assertSee($a->clave)->assertSee($b->clave)->assertDontSee($impresa->clave)
+            ->assertDontSee($error->clave)->assertDontSee($revocada->clave)->assertSee('Confirmar impresas');
+        $this->assertNull($a->fresh()->impresa_at); $this->assertNull($b->fresh()->impresa_at);
+        $this->assertSame($escrituras,count($this->api->escrituras));
+        $this->post(route('mt.fichas.impresas'),['seleccion_impresa'=>json_encode([$a->id,$b->id])])->assertRedirect(route('mt.fichas'));
+        $this->assertNotNull($a->fresh()->impresa_at); $this->assertSame(1,(int)$a->fresh()->impresa_por);
+        $fecha=$a->fresh()->impresa_at->timestamp;
+        $this->post(route('mt.fichas.impresas'),['seleccion_impresa'=>json_encode([$a->id])])->assertRedirect();
+        $this->assertSame($fecha,$a->fresh()->impresa_at->timestamp);
+        $this->assertEquals($antes,$a->fresh()->only(array_keys($antes)));
+        $this->assertSame($escrituras,count($this->api->escrituras));
+        $this->get($url)->assertUnprocessable();
+        $this->get(route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'todas']))->assertOk()->assertSee($a->clave)->assertSee($impresa->clave);
+    }
+
+    public function test_seleccion_general_rechaza_ajenas_y_omite_impresas_y_no_activas(): void
+    {
+        $this->login(); $r=$this->router(); $a=$this->lote($r)->fichas()->firstOrFail(); $b=$this->lote($r)->fichas()->firstOrFail();
+        $b->update(['impresa_at'=>CarbonImmutable::now('UTC')]);
+        $this->get(route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'seleccion','fichas'=>[$a->id,$b->id]]))
+            ->assertOk()->assertSee($a->clave)->assertDontSee($b->clave)->assertSee('Se omitieron 1 fichas');
+        $r2=$this->router(); $ajena=$this->lote($r2)->fichas()->firstOrFail();
+        $this->get(route('mt.fichas.imprimir',['empleados'=>0,'router_id'=>$r->id,'modo'=>'seleccion','fichas'=>[$ajena->id]]))->assertNotFound();
+        $this->getJson(route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'seleccion']))->assertUnprocessable();
+        $this->getJson(route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'seleccion','fichas'=>[$a->id,$a->id]]))->assertUnprocessable();
+        $this->get(route('mt.fichas',['impresion'=>'pendientes']))->assertOk()->assertSee($a->usuario)->assertDontSee($b->usuario);
+        $this->get(route('mt.fichas',['impresion'=>'impresas']))->assertOk()->assertSee($b->usuario)->assertDontSee($a->usuario);
+    }
+
+    public function test_edita_nombre_por_ficha_y_lo_imprime_sin_alterar_acceso(): void
+    {
+        $this->login(); $r=$this->router(); $l=$this->lote($r,1,2); [$a,$b]=$l->fichas()->get()->all();
+        $antes=$a->only(['usuario','clave','estado','vence_at','activada_at']); $escrituras=count($this->api->escrituras);
+        $this->get(route('mt.fichas.editar',$a))->assertOk();
+        $this->put(route('mt.fichas.actualizar',$a),['nombre'=>'Luis Díaz <b>Empleado</b>','dias'=>7,'estado'=>'activa'])->assertRedirect();
+        $this->assertSame('Luis Díaz <b>Empleado</b>',$a->fresh()->nombreTitular());
+        $this->assertSame('Visita de prueba',$b->fresh()->nombreTitular());
+        $this->get(route('mt.imprimir',['lote'=>$l,'ficha_id'=>$a->id]))->assertOk()->assertSee('Luis Díaz <b>Empleado</b>')->assertDontSee('<b>Empleado</b>',false);
+        $this->assertEquals($antes,$a->fresh()->only(array_keys($antes))); $this->assertSame($escrituras,count($this->api->escrituras));
+        $this->get(route('mt.fichas',['q'=>'Luis Díaz']))->assertOk()->assertSee($a->usuario)->assertDontSee($b->usuario);
+    }
+
+    public function test_elimina_errores_solo_tras_bloquear_y_mantiene_historial(): void
+    {
+        $this->login(); $r=$this->router(); $l=$this->lote($r); $f=$l->fichas()->firstOrFail(); $f->update(['estado'=>'error']);
+        $activa=$this->lote($r)->fichas()->firstOrFail();
+        $this->api->tablas['/ip/hotspot/active']=[['.id'=>'*ACT','user'=>$f->usuario,'server'=>'visitantes']];
+        $d=['empleados'=>0,'router_id'=>$r->id,'confirmar'=>1];
+        $this->deleteJson(route('mt.fichas.eliminar-errores'),['empleados'=>0])->assertUnprocessable();
+        $this->delete(route('mt.fichas.eliminar-errores'),$d)->assertRedirect();
+        $this->assertNull(Ficha::find($f->id)); $this->assertNotNull(Ficha::withTrashed()->find($f->id)->deleted_at);
+        $this->assertNotNull(Lote::find($l->id)); $this->assertNotNull(Ficha::find($activa->id));
+        $this->assertSame('yes',collect($this->api->tablas['/ip/hotspot/user'])->firstWhere('name',$f->usuario)['disabled']);
+        $this->assertCount(0,$this->api->tablas['/ip/hotspot/active']);
+        app(FichasService::class)->publicar($l,1,true);
+        $this->assertSame('yes',collect($this->api->tablas['/ip/hotspot/user'])->firstWhere('name',$f->usuario)['disabled']);
+        $this->assertTrue(DB::table('mt_eventos')->where('ficha_id',$f->id)->where('accion','eliminar_ficha_error')->where('correcto',true)->exists());
+    }
+
+    public function test_no_elimina_error_con_router_offline_ni_usuario_ajeno(): void
+    {
+        $this->login(); $r=$this->router(); $f=$this->lote($r)->fichas()->firstOrFail(); $f->update(['estado'=>'error']);
+        $d=['empleados'=>0,'confirmar'=>1]; $this->api->offline=true;
+        $this->delete(route('mt.fichas.eliminar-errores'),$d)->assertRedirect();
+        $this->assertSame('error',$f->fresh()->estado);
+        $this->api->offline=false; $this->api->tablas['/ip/hotspot/user'][0]['comment']='usuario ajeno';
+        $this->delete(route('mt.fichas.eliminar-errores'),$d)->assertRedirect();
+        $this->assertSame('error',$f->fresh()->estado); $this->assertSame('no',$this->api->tablas['/ip/hotspot/user'][0]['disabled']);
+    }
+
+    public function test_acciones_de_impresion_edicion_y_eliminacion_exigen_permiso(): void
+    {
+        $this->postJson(route('mt.fichas.impresas'),['fichas'=>[1]])->assertUnauthorized();
+        $this->login(); $r=$this->router(); $f=$this->lote($r)->fichas()->firstOrFail(); $this->permitir=false;
+        $this->getJson(route('mt.fichas.imprimir',['empleados'=>0,'modo'=>'todas']))->assertForbidden();
+        $this->postJson(route('mt.fichas.impresas'),['fichas'=>[$f->id]])->assertForbidden();
+        $this->getJson(route('mt.fichas.editar',$f))->assertForbidden();
+        $this->putJson(route('mt.fichas.actualizar',$f),['nombre'=>'Otro'])->assertForbidden();
+        $this->deleteJson(route('mt.fichas.eliminar-errores'),['empleados'=>0,'confirmar'=>1])->assertForbidden();
+    }
+
     public function test_api_decodifica_filas_y_nunca_trata_trap_como_exito(): void
     {
         $filas=RespuestaApi::filas(['!re','=.id=*A','=name=a=b','!re','=.id=*B','=name=Segundo','!done']);
@@ -556,5 +647,6 @@ class MikrotikHotspotTest extends TestCase
         RespuestaApi::filas(['!trap','=message=not enough permissions','!done']);
     }
 }
+
 
 

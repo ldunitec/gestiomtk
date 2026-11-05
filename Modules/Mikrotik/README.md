@@ -188,3 +188,20 @@ sustituyen la prueba de preparación contra el router físico.
 - [Scheduler](https://help.mikrotik.com/docs/spaces/ROS/pages/40992881/Scheduler)
 - [Librería PHP RouterOS utilizada por el proyecto](https://github.com/EvilFreelancer/routeros-api-php)
 
+
+
+## Panel general: impresión, edición y eliminación de errores
+
+Tras integrar esta actualización, respalde la base y ejecute desde la carpeta del proyecto:
+
+```powershell
+php artisan migrate --path=Modules/Mikrotik/Database/Migrations/2026_11_05_000002_add_impresion_to_mt_fichas.php --force
+php artisan optimize:clear
+```
+
+No cambia los scripts del router. Las fichas existentes conservan su vigencia y nombre heredado del lote. Las impresiones anteriores no se conocen: todas comienzan sin impresión registrada hasta confirmarlas.
+
+- En **Fichas de visitantes** o **Fichas de empleados**, puede imprimir todas las activas de esa sección/router, todas las activas sin imprimir de todas las páginas o las pendientes seleccionadas de la página actual. La impresión general combina varios lotes. El filtro de texto/estado no limita los botones masivos; su alcance se indica en pantalla.
+- **Confirmar impresas**, en la vista previa, registra fecha UTC y operador después de imprimir o guardar PDF. Abrir, cancelar o cerrar la vista no marca fichas. Confirmar dos veces conserva la primera fecha y no reinicia la vigencia. La reimpresión sigue disponible desde el lote o «Imprimir todas las activas».
+- **Editar** cambia el nombre o referencia de una sola ficha, que se usa también en impresión y búsqueda. Conserva credenciales y plazo. El empleado requiere nombre.
+- **Eliminar todas las fichas con error** requiere confirmar el alcance de sección y router. Antes de retirarlas, deshabilita su usuario propio y elimina sesiones/cookies. Si falta conexión o el usuario no pertenece a la ficha, conserva el registro con el error. La eliminación es lógica, conserva auditoría y lote, e impide que un reintento del lote la vuelva a publicar. No elimina otras fichas ni usuarios externos.

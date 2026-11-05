@@ -4,9 +4,10 @@ namespace Modules\Mikrotik\Entities;
 
 class Ficha extends Modelo
 {
+    use \Illuminate\Database\Eloquent\SoftDeletes;
     protected $table = 'mt_fichas';
     protected $hidden = ['clave'];
-    protected $casts = ['clave' => 'encrypted', 'activada_at' => 'datetime', 'vence_at' => 'datetime', 'sincronizada_at' => 'datetime', 'revocada_at' => 'datetime'];
+    protected $casts = ['clave' => 'encrypted', 'activada_at' => 'datetime', 'impresa_at' => 'datetime', 'vence_at' => 'datetime', 'sincronizada_at' => 'datetime', 'revocada_at' => 'datetime'];
     public function router() { return $this->belongsTo(Router::class, 'router_id'); }
     public function lote() { return $this->belongsTo(Lote::class, 'lote_id'); }
 
@@ -35,9 +36,22 @@ class Ficha extends Modelo
         return $this->vence_at->copy()->timezone(config('mikrotik_visitantes.timezone'))->format('d/m/Y H:i:s');
     }
 
+    public function nombreTitular(): string
+    {
+        return $this->nombre ?? (string) $this->lote->visitante;
+    }
+
+    public function scopeDisponiblesParaImprimir($q)
+    {
+        return $q->where('estado', 'activa')->whereNull('revocada_at')->where(function ($v) {
+            $v->whereNull('vence_at')->orWhere('vence_at', '>', \Carbon\CarbonImmutable::now('UTC'));
+        });
+    }
+
     public function qrUrl(): string
     {
         return $this->router->portal_url.'?'.http_build_query(['username' => $this->usuario], '', '&', PHP_QUERY_RFC3986);
     }
 }
+
 

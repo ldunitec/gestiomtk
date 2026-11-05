@@ -18,6 +18,11 @@ Route::middleware('can:mikrotik.ver')->group(function () {
 Route::middleware('can:mikrotik.fichas')->group(function () {
     Route::get('/empleados', [C::class, 'empleados'])->name('empleados');
     Route::post('/empleados', [C::class, 'crearEmpleado'])->name('empleados.crear');
+    Route::get('/fichas/imprimir', [C::class, 'imprimirListado'])->name('fichas.imprimir');
+    Route::post('/fichas/impresas', [C::class, 'confirmarImpresion'])->name('fichas.impresas');
+    Route::delete('/fichas/errores', [C::class, 'eliminarErrores'])->name('fichas.eliminar-errores');
+    Route::get('/fichas/{ficha}/editar', [C::class, 'editarFicha'])->name('fichas.editar');
+    Route::put('/fichas/{ficha}', [C::class, 'actualizarFicha'])->name('fichas.actualizar');
     Route::get('/fichas', [C::class, 'fichas'])->name('fichas');
     Route::post('/fichas', [C::class, 'crear'])->name('crear');
     Route::get('/lotes/{lote}', [C::class, 'lote'])->name('lote');
@@ -31,4 +36,5 @@ Route::middleware('can:mikrotik.sesiones')->group(function () {
     Route::get('/routers/{router}/sesiones', [C::class, 'sesiones'])->name('sesiones');
     Route::post('/fichas/{ficha}/desconectar', [C::class, 'desconectar'])->name('desconectar');
 });
+
 
