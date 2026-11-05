@@ -85,6 +85,7 @@ class MikrotikHotspotTest extends TestCase
         DB::purge('sqlite');
         (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->up();
         (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_03_000001_create_mikrotik_visitantes_tables.php'))->up();
+        (require base_path('Modules/Mikrotik/Database/Migrations/2026_11_05_000001_add_inicio_vigencia_to_mikrotik.php'))->up();
         Gate::before(fn () => $this->permitir);
         Carbon::setTestNow(Carbon::parse('2026-11-03 18:00:00','UTC'));
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-03 18:00:00','UTC'));
@@ -130,6 +131,9 @@ class MikrotikHotspotTest extends TestCase
     {
         $s = app(FichasService::class);
         $l = $s->crear($r, $this->datos($r,$dias,$cantidad), 1);
+        $vence = CarbonImmutable::now('UTC')->addDays($dias);
+        $l->update(['inicio_vigencia'=>'emision','vence_at'=>$vence]);
+        $l->fichas()->update(['inicio_vigencia'=>'emision','vence_at'=>$vence,'duracion_dias'=>null]);
         if ($publicar) { $s->publicar($l, 1); }
         return $l;
     }
@@ -139,9 +143,10 @@ class MikrotikHotspotTest extends TestCase
         $this->getJson(route('mt.index'))->assertUnauthorized();
         $this->postJson(route('mt.crear'), [])->assertUnauthorized();
         $this->login(); $this->permitir = false;
-        foreach (['mt.index','mt.configuracion','mt.fichas'] as $route) { $this->getJson(route($route))->assertForbidden(); }
+        foreach (['mt.index','mt.configuracion','mt.fichas','mt.empleados'] as $route) { $this->getJson(route($route))->assertForbidden(); }
         $this->postJson(route('mt.guardar'), [])->assertForbidden();
         $this->postJson(route('mt.crear'), [])->assertForbidden();
+        $this->postJson(route('mt.empleados.crear'), [])->assertForbidden();
     }
 
     public function test_seeder_aditivo_y_acceso_real_administrador(): void
@@ -400,6 +405,101 @@ class MikrotikHotspotTest extends TestCase
         $this->getJson(route('mt.sesiones',$r))->assertForbidden();
     }
 
+    private function activarEnRouter(Ficha $f, int $inicio): string
+    {
+        // Simula el resultado persistido de on-login, sin afirmar que ejecuta RouterOS.
+        $comentario = $f->router->marcador().':A'.$f->duracion_dias.':'.$inicio.':'.($inicio + $f->duracion_dias * 86400);
+        foreach ($this->api->tablas['/ip/hotspot/user'] as &$u) {
+            if ($u['name'] === $f->usuario) { $u['comment'] = $comentario; }
+        }
+        return $comentario;
+    }
+
+    public function test_nuevas_fichas_no_vencen_antes_del_primer_ingreso_ni_al_imprimir(): void
+    {
+        $this->login(); $r=$this->router(); $s=app(FichasService::class);
+        foreach ([1,2,7] as $dias) {
+            $l=$s->crear($r,$this->datos($r,$dias),1); $s->publicar($l,1);
+            $f=$l->fichas()->firstOrFail();
+            $this->assertNull($l->vence_at); $this->assertNull($f->vence_at); $this->assertNull($f->activada_at);
+            $u=collect($this->api->tablas['/ip/hotspot/user'])->firstWhere('name',$f->usuario);
+            $this->assertSame($r->marcador().':P'.$dias,$u['comment']);
+            $this->get(route('mt.imprimir',$l))->assertOk()->assertSee('Imprimir no activa ni reinicia el plazo');
+            $this->assertNull($f->fresh()->activada_at);
+        }
+        Carbon::setTestNow(Carbon::parse('2026-12-03 18:00:00','UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-12-03 18:00:00','UTC'));
+        $s->conciliar($r->id);
+        foreach (Ficha::all() as $f) { $this->assertTrue($f->imprimible()); $this->assertNull($f->vence_at); }
+    }
+
+    public function test_primer_ingreso_individual_se_sincroniza_y_reintentar_no_lo_reinicia(): void
+    {
+        $this->login(); $r=$this->router(); $s=app(FichasService::class);
+        foreach ([1,2,7] as $dias) {
+            $l=$s->crear($r,$this->datos($r,$dias,2),1); $s->publicar($l,1);
+            $f=$l->fichas()->firstOrFail(); $inicio=CarbonImmutable::now('UTC')->timestamp;
+            $comentario=$this->activarEnRouter($f,$inicio);
+            $this->assertSame(0,$s->conciliar($r->id)); $f->refresh();
+            $this->assertSame($inicio,$f->activada_at->timestamp);
+            $this->assertSame($inicio+$dias*86400,$f->vence_at->timestamp);
+            $this->assertNull($l->fichas()->orderByDesc('id')->first()->vence_at);
+            $s->publicar($l,1,true);
+            $u=collect($this->api->tablas['/ip/hotspot/user'])->firstWhere('name',$f->usuario);
+            $this->assertSame($comentario,$u['comment']);
+            $this->get(route('mt.imprimir',['lote'=>$l,'ficha_id'=>$f->id]))->assertOk();
+            $this->assertSame($inicio,$f->fresh()->activada_at->timestamp);
+        }
+    }
+
+    public function test_no_recrea_usuario_activado_ni_acepta_reinicio_o_extension(): void
+    {
+        $r=$this->router(); $s=app(FichasService::class);
+        $l=$s->crear($r,$this->datos($r),1); $s->publicar($l,1); $f=$l->fichas()->firstOrFail();
+        $inicio=CarbonImmutable::now('UTC')->timestamp; $this->activarEnRouter($f,$inicio); $s->conciliar($r->id);
+        foreach ([$r->marcador().':P1',$r->marcador().':A1:'.($inicio+1).':'.($inicio+86401),$r->marcador().':E'] as $incorrecto) {
+            $this->api->tablas['/ip/hotspot/user'][0]['comment']=$incorrecto;
+            $this->assertSame(1,$s->publicar($l,1,true)['errores']);
+            $this->assertSame($inicio,$f->fresh()->activada_at->timestamp);
+        }
+        $this->api->tablas['/ip/hotspot/user']=[];
+        $this->assertSame(1,$s->publicar($l,1,true)['errores']);
+        $this->assertCount(0,$this->api->tablas['/ip/hotspot/user']);
+    }
+
+    public function test_ficha_activada_caduca_aunque_se_desconecte_y_no_se_rehabilita(): void
+    {
+        $r=$this->router(); $s=app(FichasService::class);
+        $l=$s->crear($r,$this->datos($r),1); $s->publicar($l,1); $f=$l->fichas()->firstOrFail();
+        $this->activarEnRouter($f,CarbonImmutable::now('UTC')->timestamp);
+        Carbon::setTestNow(Carbon::parse('2026-11-04 18:00:00','UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-04 18:00:00','UTC'));
+        $s->conciliar($r->id); $this->assertSame('vencida',$f->fresh()->estado);
+        $this->assertFalse($f->fresh()->imprimible());
+        $s->publicar($l,1,true); $this->assertSame('yes',$this->api->tablas['/ip/hotspot/user'][0]['disabled']);
+    }
+
+    public function test_empleados_sin_vencimiento_separados_revocables_y_sin_escalado_por_formulario(): void
+    {
+        $this->login(); $r=$this->router(); $s=app(FichasService::class); $d=$this->datos($r);
+        $this->post(route('mt.empleados.crear'),$d)->assertRedirect();
+        $this->post(route('mt.empleados.crear'),$d)->assertRedirect();
+        $this->assertSame(1,Ficha::count()); $f=Ficha::firstOrFail();
+        $this->assertSame('permanente',$f->inicio_vigencia); $this->assertNull($f->vence_at);
+        $this->assertSame($r->marcador().':E',$this->api->tablas['/ip/hotspot/user'][0]['comment']);
+        $this->get(route('mt.empleados'))->assertOk()->assertSee($f->usuario)->assertSee('Sin vencimiento');
+        $this->get(route('mt.fichas'))->assertOk()->assertDontSee($f->usuario);
+        $this->get(route('mt.imprimir',$f->lote))->assertOk()->assertSee('Internet para empleados')->assertSee('Sin vencimiento');
+        $d['solicitud_uuid']=(string) Str::uuid(); $d['dias']=0;
+        $this->postJson(route('mt.crear'),$d)->assertUnprocessable();
+        $d['visitante']=''; $this->postJson(route('mt.empleados.crear'),$d)->assertUnprocessable();
+        Carbon::setTestNow(Carbon::parse('2030-11-03 18:00:00','UTC'));
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2030-11-03 18:00:00','UTC'));
+        $s->conciliar($r->id); $this->assertTrue($f->fresh()->imprimible());
+        $s->revocar($f,1); $this->assertSame('revocada',$f->fresh()->estado);
+        $this->assertSame('yes',$this->api->tablas['/ip/hotspot/user'][0]['disabled']);
+    }
+
     public function test_api_decodifica_filas_y_nunca_trata_trap_como_exito(): void
     {
         $filas=RespuestaApi::filas(['!re','=.id=*A','=name=a=b','!re','=.id=*B','=name=Segundo','!done']);
@@ -408,3 +508,4 @@ class MikrotikHotspotTest extends TestCase
         RespuestaApi::filas(['!trap','=message=not enough permissions','!done']);
     }
 }
+

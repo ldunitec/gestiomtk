@@ -18,26 +18,31 @@ class FichasService
             'accion' => $accion, 'correcto' => $correcto, 'created_at' => CarbonImmutable::now('UTC')]);
     }
 
-    public function crear(Router $router, array $d, int $actor): Lote
+    public function crear(Router $router, array $d, int $actor, bool $empleado = false): Lote
     {
-        return DB::transaction(function () use ($router, $d, $actor) {
+        return DB::transaction(function () use ($router, $d, $actor, $empleado) {
+            $modo = $empleado ? 'permanente' : 'primer_ingreso';
+            if ((!$empleado && !in_array((int) $d['dias'], [1,2,7], true))
+                || ($empleado && ((int) $d['dias'] !== 0 || (int) $d['cantidad'] !== 1 || empty(trim($d['visitante'] ?? ''))))) {
+                throw ValidationException::withMessages(['dias' => 'Seleccione una vigencia válida o registre un empleado con nombre.']);
+            }
             Router::whereKey($router->id)->lockForUpdate()->firstOrFail();
             $anterior = Lote::where('solicitud_uuid', $d['solicitud_uuid'])->first();
             if ($anterior) {
-                if ((int) $anterior->router_id !== $router->id || (int) $anterior->creado_por !== $actor
+                if ($anterior->inicio_vigencia !== $modo || (int) $anterior->router_id !== $router->id || (int) $anterior->creado_por !== $actor
                     || (int) $anterior->dias !== (int) $d['dias'] || (int) $anterior->cantidad !== (int) $d['cantidad']
                     || (string) $anterior->visitante !== (string) ($d['visitante'] ?? '')) {
                     throw ValidationException::withMessages(['solicitud_uuid' => 'Este envío ya pertenece a otro lote. Recargue el formulario.']);
                 }
                 return $anterior;
             }
-            $vence = CarbonImmutable::now('UTC')->addDays((int) $d['dias']);
+            $vence = null;
             $lote = Lote::create(['router_id' => $router->id, 'solicitud_uuid' => $d['solicitud_uuid'], 'dias' => $d['dias'],
-                'cantidad' => $d['cantidad'], 'visitante' => $d['visitante'] ?? null, 'creado_por' => $actor, 'vence_at' => $vence]);
+                'cantidad' => $d['cantidad'], 'visitante' => $d['visitante'] ?? null, 'creado_por' => $actor, 'inicio_vigencia' => $modo, 'vence_at' => $vence]);
             for ($i = 0; $i < (int) $d['cantidad']; $i++) {
                 Ficha::create(['router_id' => $router->id, 'lote_id' => $lote->id,
-                    'usuario' => 'V-'.Str::upper(Str::random(12)), 'clave' => Str::random(12),
-                    'estado' => 'pendiente', 'vence_at' => $vence]);
+                    'usuario' => ($empleado ? 'E-' : 'V-').Str::upper(Str::random(12)), 'clave' => Str::random(12),
+                    'estado' => 'pendiente', 'inicio_vigencia' => $modo, 'duracion_dias' => $empleado ? null : $d['dias'], 'vence_at' => $vence]);
             }
             $this->evento($router, 'crear_lote', true, $actor);
             return $lote;
@@ -59,7 +64,7 @@ class FichasService
             } catch (ErrorRouter $e) { $problema = $e->getMessage(); }
             foreach ($fichas as $f) {
                 $f->setRelation('router', $r);
-                if ($f->revocada_at || $f->vence_at->isPast()) { continue; }
+                if ($f->revocada_at || $f->vencida()) { continue; }
                 if ($f->estado === 'activa' && !$verificarActivas) { $correctas++; continue; }
                 try {
                     if ($problema) { throw new ErrorRouter($problema); }
@@ -96,7 +101,8 @@ class FichasService
         return DB::transaction(function () use ($routerId, $actor) {
             $r = Router::whereKey($routerId)->lockForUpdate()->firstOrFail();
             $fichas = $r->fichas()->whereNotIn('estado', ['revocada', 'vencida'])->where(function ($q) {
-                $q->whereNotNull('revocada_at')->orWhere('vence_at', '<=', CarbonImmutable::now('UTC'));
+                $q->whereNotNull('revocada_at')->orWhere('vence_at', '<=', CarbonImmutable::now('UTC'))
+                    ->orWhere('inicio_vigencia', 'primer_ingreso');
             })->lockForUpdate()->get();
             if ($fichas->isEmpty()) { return 0; }
             $api = null;
@@ -106,6 +112,13 @@ class FichasService
                 $f->setRelation('router', $r);
                 try {
                     if (!$api) { throw new ErrorRouter('Router sin conexión. La revocación seguirá pendiente hasta confirmarla.'); }
+                    if (!$f->revocada_at) {
+                        $this->hotspot->sincronizar($api, $f);
+                        if (!$f->vencida()) {
+                            $f->update(['sincronizada_at' => CarbonImmutable::now('UTC'), 'error' => null]);
+                            continue;
+                        }
+                    }
                     $this->hotspot->bloquear($api, $f);
                     $f->update(['estado' => $f->revocada_at ? 'revocada' : 'vencida', 'error' => null, 'sincronizada_at' => CarbonImmutable::now('UTC')]);
                     $this->evento($r, 'bloquear_ficha', true, $actor, $f->id);
@@ -120,3 +133,4 @@ class FichasService
         });
     }
 }
+

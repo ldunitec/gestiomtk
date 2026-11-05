@@ -61,45 +61,76 @@ class ScriptsHotspot
         ROS;
     }
 
+    private static function leerVigencia(): string
+    {
+        return <<<'ROS'
+            :local valor [:pick $comentario @LONG@ [:len $comentario]];
+            :local vence 0;
+            :if ($valor = "E") do={ :set vence -1; };
+            :if (($valor = "P1") || ($valor = "P2") || ($valor = "P7")) do={ :set vence -1; };
+            :if ([:len $valor] = 10) do={ :set vence [:tonum $valor]; };
+            :if (([:len $valor] = 24) && ([:pick $valor 0 1] = "A") && ([:pick $valor 2 3] = ":") && ([:pick $valor 13 14] = ":")) do={
+                :local dias [:tonum [:pick $valor 1 2]];
+                :local inicio [:tonum [:pick $valor 3 13]];
+                :local fin [:tonum [:pick $valor 14 24]];
+                :if (([:typeof $dias] = "num") && ([:typeof $inicio] = "num") && ([:typeof $fin] = "num")) do={
+                    :if ((($dias = 1) || ($dias = 2) || ($dias = 7)) && ($inicio >= 1735689600) && (($fin - $inicio) = ($dias * 86400))) do={ :set vence $fin; };
+                };
+            };
+            :local caducada true;
+            :if ([:typeof $vence] = "num") do={
+                :if ($vence = -1) do={ :set caducada false; } else={ :set caducada (($ahora < 1735689600) || ($ahora >= $vence)); };
+            };
+        ROS;
+    }
+
     public static function login(Router $r): string
     {
-        return strtr(<<<'ROS'
+        return self::render(<<<'ROS'
             :local uid [/ip hotspot user find where name=$user];
             :if ([:len $uid] = 0) do={ :error "Ficha inexistente"; };
             :local comentario [/ip hotspot user get $uid comment];
-            :local vence 0;
-            :if ([:pick $comentario 0 @LONG@] = "@PREFIJO@:") do={
-                :set vence [:tonum [:pick $comentario @LONG@ [:len $comentario]]];
-            };
+            :if ([:pick $comentario 0 @LONG@] != "@PREFIJO@:") do={ :error "Ficha ajena"; };
             @RELOJ@
-            :local caducada true;
-            :if ([:typeof $vence] = "num") do={
-                :set caducada (($ahora < 1735689600) || ($ahora >= $vence));
+            :local pendiente [:pick $comentario @LONG@ [:len $comentario]];
+            :if (($pendiente = "P1") || ($pendiente = "P2") || ($pendiente = "P7")) do={
+                :if ($ahora < 1735689600) do={
+                    /ip hotspot active remove [/ip hotspot active find where user=$user];
+                    :error "Reloj invalido: ficha sin activar";
+                };
+                :local dias [:tonum [:pick $pendiente 1 2]];
+                :local fin ($ahora + ($dias * 86400));
+                :if ([/ip hotspot user get $uid comment] = $comentario) do={
+                    /ip hotspot user set $uid comment=("@PREFIJO@:A" . $dias . ":" . $ahora . ":" . $fin);
+                };
+                :set comentario [/ip hotspot user get $uid comment];
             };
+            @VIGENCIA@
             :if ($caducada) do={
                 @BLOQUEAR@
-                :error "Ficha vencida o reloj invalido";
+                :error "Ficha vencida o vigencia invalida";
             };
-        ROS, ['@PREFIJO@' => $r->marcador(), '@LONG@' => strlen($r->marcador()) + 1, '@BLOQUEAR@' => self::bloquear(), '@RELOJ@' => self::reloj()]);
+        ROS, $r);
     }
 
     public static function barrido(Router $r): string
     {
-        return strtr(<<<'ROS'
+        return self::render(<<<'ROS'
             @RELOJ@
             :foreach uid in=[/ip hotspot user find where comment~"^@PREFIJO@:"] do={
                 :local comentario [/ip hotspot user get $uid comment];
-                :local vence [:tonum [:pick $comentario @LONG@ [:len $comentario]]];
-                :local caducada true;
-                :if ([:typeof $vence] = "num") do={
-                    :set caducada (($ahora < 1735689600) || ($ahora >= $vence));
-                };
+                @VIGENCIA@
                 :if ($caducada) do={
                     @BLOQUEAR@
                 };
             };
             /system script set [/system script find where name="@TAREA@"] comment=("ok:" . $ahora);
-        ROS, ['@PREFIJO@' => $r->marcador(), '@LONG@' => strlen($r->marcador()) + 1,
-            '@TAREA@' => $r->tarea(), '@BLOQUEAR@' => self::bloquear(), '@RELOJ@' => self::reloj()]);
+        ROS, $r);
+    }
+
+    private static function render(string $source, Router $r): string
+    {
+        $source = strtr($source, ['@VIGENCIA@' => self::leerVigencia(), '@BLOQUEAR@' => self::bloquear(), '@RELOJ@' => self::reloj()]);
+        return strtr($source, ['@PREFIJO@' => $r->marcador(), '@LONG@' => strlen($r->marcador()) + 1, '@TAREA@' => $r->tarea()]);
     }
 }

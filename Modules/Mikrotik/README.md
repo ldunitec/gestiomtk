@@ -1,4 +1,4 @@
-# MikroTik / Hotspot para visitantes
+# MikroTik / Hotspot para visitantes y empleados
 
 Módulo `Modules/Mikrotik` independiente de las pantallas antiguas de DHCP. Permite registrar routers, consultar recursos/interfaces y sesiones del Hotspot, crear fichas individuales o lotes de hasta 20, imprimir QR, desconectar y revocar visitantes.
 
@@ -40,7 +40,7 @@ La lectura de hora usa `/system clock` y su `gmt-offset`, sin `:timestamp` ni `:
 
 El cálculo considera años bisiestos y convierte a UTC antes de comparar, por lo que conserva los vencimientos originales de las fichas. Los desplazamientos numéricos fuera de ±14 horas se rechazan. La preparación exige que el router ejecute el script y devuelva una hora UTC dentro de 90 segundos de la aplicación; si falla, no se habilitan nuevas fichas.
 
-Después de actualizar esta compatibilidad, abra **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** para reinstalar el código de reloj. No hace falta una migración nueva ni actualizar el firmware. La API simulada cubre la aceptación de la versión y el flujo de emisión; el script debe verificarse en el equipo real antes de entregar fichas.
+Después de actualizar esta compatibilidad, abra **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** para reinstalar el código de reloj. La corrección del reloj no requiere firmware nuevo; la actualización de primer ingreso y empleados sí requiere la migración indicada abajo. La API simulada cubre la aceptación de la versión y el flujo de emisión; el script debe verificarse en el equipo real antes de entregar fichas.
 
 ## Configurar su router
 
@@ -61,21 +61,40 @@ El certificado debe ser válido para la IP o nombre utilizado. No se desactiva l
 
 ## Vigencia de las fichas
 
-| Selección | Vigencia desde creación |
+| Selección | Vigencia desde el primer ingreso exitoso |
 | --- | --- |
 | 1 día | 24 horas |
 | 2 días | 48 horas |
 | 1 semana | 168 horas |
 
-El tiempo desconectado también cuenta. La vigencia no comienza en el primer ingreso y no se reinicia al reintentar una publicación.
+El primer ingreso exitoso activa una sola vez el plazo en el propio router. Crear o imprimir no lo activa. Después de activada, el tiempo desconectado también cuenta. Reimprimir, reconectar o reintentar una publicación no reinicia la vigencia. Las fichas anteriores a esta actualización conservan sus fechas originales desde emisión.
 
 Cada ficha tiene usuario y contraseña aleatorios. El perfil admite un dispositivo simultáneo y no añade MAC cookies. El usuario se restringe al servidor Hotspot elegido.
 
-El comentario del usuario conserva el identificador del módulo y el instante de vencimiento en UTC. El perfil comprueba ese vencimiento al ingresar. El router ejecuta además una tarea cada 30 segundos que deshabilita usuarios vencidos y elimina sus sesiones/cookies. Una sesión ya conectada puede tardar hasta 30 segundos en cerrarse después del vencimiento cuando el scheduler está funcionando. Tras reiniciar el router, la validación de ingreso sigue vigente y la tarea vuelve a ejecutarse periódicamente.
+El comentario del usuario conserva el identificador del módulo y la política: `P1`, `P2` o `P7` significa pendiente de primer ingreso; `A1:inicio:fin` (también A2/A7) guarda los dos instantes UTC al activarse. `E` identifica empleados sin vencimiento. Se sigue admitiendo el epoch único de las fichas antiguas. No edite estos comentarios: un cambio de inicio, duración o fecha se rechaza al sincronizar. El perfil comprueba ese vencimiento al ingresar. El router ejecuta además una tarea cada 30 segundos que deshabilita usuarios vencidos y elimina sus sesiones/cookies. Una sesión ya conectada puede tardar hasta 30 segundos en cerrarse después del vencimiento cuando el scheduler está funcionando. Tras reiniciar el router, la validación de ingreso sigue vigente y la tarea vuelve a ejecutarse periódicamente.
 
-No se usa `limit-uptime` como sustituto de la fecha de vencimiento: ese parámetro limita tiempo acumulado de conexión. Si el reloj del router es inválido, la protección bloquea las fichas del módulo. Corrija NTP, prepare/verifique el Hotspot y use **Verificar / reintentar publicación** para recuperar las fichas todavía vigentes. Las vencidas o revocadas no se reactivan.
+No se usa `limit-uptime` como sustituto de la fecha de vencimiento: ese parámetro limita tiempo acumulado de conexión. Si el reloj del router es inválido, no se activan visitantes nuevos y se bloquean visitantes con vencimiento. Los empleados conservan su política sin vencimiento. Corrija NTP, prepare/verifique el Hotspot y use **Verificar / reintentar publicación** para recuperar las fichas todavía vigentes. Las vencidas o revocadas no se reactivan.
 
 La protección local sigue funcionando si Laravel queda desconectado, mientras el router conserve sus perfiles, scripts, scheduler y reloj correctos. No hay garantía de vencimiento si un administrador elimina/deshabilita esa protección.
+
+## Actualizar a primer ingreso y empleados
+
+Respalde la base y conserve `APP_KEY`. Después de integrar el cambio y actualizar código, ejecute la migración específica antes de abrir el módulo:
+
+```powershell
+php artisan migrate --path=Modules/Mikrotik/Database/Migrations/2026_11_05_000001_add_inicio_vigencia_to_mikrotik.php --force
+php artisan optimize:clear
+```
+
+La migración admite la instalación existente MariaDB/MySQL y nuevas bases SQLite de pruebas. Mantiene intactos los vencimientos anteriores y permite fechas nulas reales para empleados y visitantes sin activar. No admite una actualización de bases SQLite antiguas con `vence_at NOT NULL`; estas deben migrarse a MariaDB. No retroceda el código ni esta migración después de emitir fichas nuevas.
+
+Vuelva a **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** en cada router: instala el nuevo on-login y barrido conservando los usuarios existentes. Hasta prepararlo, la publicación se rechazará. Mantenga el reloj/NTP correcto.
+
+En **Fichas de empleados**, escriba el nombre y seleccione el router. Se emite una ficha individual, cifrada y con QR, **sin vencimiento** y un dispositivo simultáneo. Puede reimprimirse o revocarse desde su lote. Una revocación sin conexión queda pendiente hasta confirmar el bloqueo. Comparte el permiso `mikrotik.fichas` y los límites de velocidad del perfil del módulo.
+
+La impresión es de solo lectura. Si una ficha ya se activó pero aún no se sincronizó, la impresión indicará la regla de primer ingreso; no extenderá la fecha real del router. Use **Sincronizar primeros ingresos y bloqueos** para ver su fecha exacta.
+
+Pruebe en el equipo: imprimir dos veces sin conectarse (debe seguir `P1`), ingresar correctamente (debe pasar a `A1:inicio:fin`), sincronizar y reconectar/reimprimir (mismo inicio/fin). Un intento con clave incorrecta no debe activar la ficha. Pruebe también un empleado y su revocación. La suite de PHP simula los comentarios resultantes; no ejecuta el lenguaje RouterOS.
 
 ## Emisión, impresión y QR
 
@@ -95,7 +114,7 @@ En el resumen, consulte el estado actual del router y abra **Sesiones Hotspot**.
 - **Desconectar** cierra la sesión y elimina sus cookies, conservando la vigencia de la ficha. El visitante puede volver a ingresar.
 - **Revocar** guarda primero la solicitud en la base de datos y después intenta deshabilitar al usuario y cerrar sus sesiones.
 - Si la API está fuera de línea, se muestra **Revocación pendiente**: el corte todavía no está confirmado y el visitante podría continuar hasta el vencimiento original. No se presenta un corte pendiente como confirmado.
-- **Conciliar vencimientos y revocaciones** reintenta los bloqueos pendientes y actualiza su estado en la aplicación.
+- **Sincronizar primeros ingresos y bloqueos** importa las fechas registradas por el router y reintenta los bloqueos pendientes. También se ejecuta con el conciliador programado. Si Laravel estuvo desconectado, el plazo del router sigue corriendo; el panel puede mostrar «Sin activar» hasta sincronizar.
 
 Para conciliar automáticamente, el módulo registra `mikrotik:conciliar` cada minuto en el scheduler de Laravel. Asegúrese de tener una tarea de Windows que ejecute `php artisan schedule:run` cada minuto desde `C:\Web\gestionmtk`; si ya existe, reutilícela. El vencimiento en el router no depende de esa tarea; las revocaciones pendientes y su confirmación sí necesitan un reintento manual o programado.
 
@@ -148,7 +167,7 @@ habilita nuevas fichas ni marca el router como preparado.
 
 Después de integrar este ajuste, actualice la aplicación, ejecute
 `php artisan view:clear` y vuelva a **Preparar y verificar Hotspot**. No hace falta
-otra migración. Si aún falla, conserve el mensaje completo de la operación y
+una migración por el transporte; sí se requiere la de primer ingreso indicada arriba. Si aún falla, conserve el mensaje completo de la operación y
 consulte en WinBox → Terminal:
 
 ```routeros
@@ -168,3 +187,4 @@ sustituyen la prueba de preparación contra el router físico.
 - [Lenguaje de scripts y funciones](https://manual.mikrotik.com/docs/developer-guides/scripting/)
 - [Scheduler](https://help.mikrotik.com/docs/spaces/ROS/pages/40992881/Scheduler)
 - [Librería PHP RouterOS utilizada por el proyecto](https://github.com/EvilFreelancer/routeros-api-php)
+

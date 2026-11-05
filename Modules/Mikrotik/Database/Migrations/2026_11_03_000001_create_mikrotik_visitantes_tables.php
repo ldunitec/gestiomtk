@@ -34,7 +34,7 @@ return new class extends Migration
             $t->unsignedTinyInteger('cantidad');
             $t->string('visitante', 100)->nullable();
             $t->unsignedBigInteger('creado_por');
-            $t->dateTime('vence_at')->index();
+            $t->dateTime('vence_at')->nullable()->index();
             $t->timestamps();
         });
         Schema::create('mt_fichas', function (Blueprint $t) {
@@ -44,7 +44,7 @@ return new class extends Migration
             $t->string('usuario', 32)->unique();
             $t->text('clave');
             $t->string('estado', 30)->default('pendiente')->index();
-            $t->dateTime('vence_at')->index();
+            $t->dateTime('vence_at')->nullable()->index();
             $t->dateTime('sincronizada_at')->nullable();
             $t->dateTime('revocada_at')->nullable();
             $t->string('error', 180)->nullable();
@@ -68,3 +68,4 @@ return new class extends Migration
         }
     }
 };
+
