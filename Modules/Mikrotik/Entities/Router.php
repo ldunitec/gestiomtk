@@ -12,5 +12,8 @@ class Router extends Modelo
     public function fichas() { return $this->hasMany(Ficha::class, 'router_id'); }
     public function marcador(): string { return 'gmtk-'.str_replace('-', '', $this->uuid); }
     public function perfil(): string { return $this->marcador().'-visitantes'; }
+    public function perfilEmpleados(): string { return $this->marcador().'-empleados'; }
+    public function perfilFicha(Ficha $f): string { return $f->inicio_vigencia === 'permanente' ? $this->perfilEmpleados() : $this->perfil(); }
     public function tarea(): string { return $this->marcador().'-expirar'; }
 }
+

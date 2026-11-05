@@ -209,8 +209,8 @@ class MikrotikHotspotTest extends TestCase
         $h->preparar($this->api,$r);
         $this->assertCount(1,$this->api->tablas['/system/script']);
         $this->assertCount(1,$this->api->tablas['/system/scheduler']);
-        $this->assertCount(2,$this->api->tablas['/ip/hotspot/user/profile']);
-        $this->assertSame('CODIGO ORIGINAL',$this->api->tablas['/ip/hotspot/user/profile'][1]['on-login']);
+        $this->assertCount(3,$this->api->tablas['/ip/hotspot/user/profile']);
+        $this->assertSame('CODIGO ORIGINAL',collect($this->api->tablas['/ip/hotspot/user/profile'])->firstWhere('name','clientes')['on-login']);
         $this->assertSame('30s',$this->api->tablas['/system/scheduler'][0]['interval']);
         $this->assertStringContainsString('/system clock get date',ScriptsHotspot::login($r));
         $this->assertStringContainsString('comment~"^'.$r->marcador().':"',ScriptsHotspot::barrido($r));
@@ -639,6 +639,123 @@ class MikrotikHotspotTest extends TestCase
         $this->deleteJson(route('mt.fichas.eliminar-errores'),['empleados'=>0,'confirmar'=>1])->assertForbidden();
     }
 
+    private function empleado(Router $r): Ficha
+    {
+        $d=$this->datos($r); $d['dias']=0;
+        $l=app(FichasService::class)->crear($r,$d,1,true);
+        app(FichasService::class)->publicar($l,1);
+        return $l->fichas()->firstOrFail();
+    }
+
+    public function test_perfil_empleados_5m_independiente_de_visitantes_y_sin_vencimiento(): void
+    {
+        $r=$this->router(); $r->update(['velocidad'=>'1M/2M']); app(HotspotService::class)->preparar($this->api,$r);
+        $f=$this->empleado($r); $v=$this->lote($r)->fichas()->firstOrFail();
+        $perfiles=collect($this->api->tablas['/ip/hotspot/user/profile'])->keyBy('name');
+        $this->assertSame('5M/5M',$perfiles[$r->perfilEmpleados()]['rate-limit']);
+        $this->assertSame('1M/2M',$perfiles[$r->perfil()]['rate-limit']);
+        $usuarios=collect($this->api->tablas['/ip/hotspot/user'])->keyBy('name');
+        $this->assertSame($r->perfilEmpleados(),$usuarios[$f->usuario]['profile']);
+        $this->assertSame($r->perfil(),$usuarios[$v->usuario]['profile']);
+        $this->assertSame($r->marcador().':E',$usuarios[$f->usuario]['comment']);
+        $this->assertNull($f->vence_at); $this->assertNull($f->activada_at);
+        $this->assertArrayNotHasKey('limit-uptime',$usuarios[$f->usuario]);
+        $this->assertSame('1',$perfiles[$r->perfilEmpleados()]['shared-users']);
+    }
+
+    public function test_preparar_traslada_empleados_anteriores_conservando_credenciales_y_revocacion(): void
+    {
+        $r=$this->router(); $a=$this->empleado($r); $b=$this->empleado($r); $v=$this->lote($r)->fichas()->firstOrFail();
+        app(FichasService::class)->revocar($b,1);
+        foreach ($this->api->tablas['/ip/hotspot/user'] as &$u) {
+            if (in_array($u['name'],[$a->usuario,$b->usuario],true)) { $u['profile']=$r->perfil(); }
+        }
+        unset($u);
+        $antes=$this->api->tablas['/ip/hotspot/user'];
+        $this->api->tablas['/ip/hotspot/active']=[['.id'=>'*EA','user'=>$a->usuario,'server'=>'visitantes'],['.id'=>'*EV','user'=>$v->usuario,'server'=>'visitantes']];
+        $this->api->tablas['/ip/hotspot/cookie']=[['.id'=>'*EC','user'=>$a->usuario]];
+        app(HotspotService::class)->preparar($this->api,$r);
+        foreach ($this->api->tablas['/ip/hotspot/user'] as $i=>$actual) {
+            $previo=$antes[$i];
+            if ($actual['name'] !== $v->usuario) { $previo['profile']=$r->perfilEmpleados(); }
+            $this->assertSame($previo,$actual);
+        }
+        $this->assertSame('revocada',$b->fresh()->estado); $this->assertNull($a->fresh()->vence_at);
+        $this->assertSame($v->usuario,$this->api->tablas['/ip/hotspot/active'][0]['user']);
+        $this->assertCount(0,$this->api->tablas['/ip/hotspot/cookie']);
+        app(HotspotService::class)->preparar($this->api,$r);
+        $this->assertCount(2,$this->api->tablas['/ip/hotspot/user/profile']);
+    }
+
+    public function test_no_publica_con_perfil_empleados_alterado_ni_traslada_usuario_ajeno(): void
+    {
+        $r=$this->router(); $f=$this->empleado($r);
+        foreach ($this->api->tablas['/ip/hotspot/user/profile'] as &$perfil) {
+            if ($perfil['name'] === $r->perfilEmpleados()) { $perfil['rate-limit']='20M/20M'; }
+        }
+        unset($perfil);
+        $this->assertSame(1,app(FichasService::class)->publicar($f->lote,1,true)['errores']);
+        $this->api->tablas['/ip/hotspot/user'][0]['profile']=$r->perfil();
+        $this->api->tablas['/ip/hotspot/user'][0]['comment']='AJENO';
+        $previo=$this->api->tablas['/ip/hotspot/user'][0];
+        try { app(HotspotService::class)->preparar($this->api,$r); $this->fail('No debe trasladar un usuario ajeno.'); }
+        catch (ErrorRouter $e) { $this->assertSame($previo,$this->api->tablas['/ip/hotspot/user'][0]); }
+    }
+
+    public function test_elimina_seleccion_de_errores_y_revocadas_sin_tocar_otras(): void
+    {
+        $this->login(); $r=$this->router(); $l=$this->lote($r,1,4); [$error,$revocada,$otra,$activa]=$l->fichas()->get()->all();
+        $error->update(['estado'=>'error']); $otra->update(['estado'=>'error']); app(FichasService::class)->revocar($revocada,1);
+        $d=['empleados'=>0,'modo'=>'seleccion','estados'=>'error','confirmar'=>1,'fichas'=>[$error->id,$revocada->id]];
+        $this->delete(route('mt.fichas.eliminar'),$d)->assertRedirect();
+        $this->assertNull(Ficha::find($error->id)); $this->assertNull(Ficha::find($revocada->id));
+        $this->assertNotNull(Ficha::find($otra->id)); $this->assertNotNull(Ficha::find($activa->id));
+        $this->assertNotNull(Ficha::withTrashed()->find($revocada->id)->deleted_at);
+        $this->assertTrue(DB::table('mt_eventos')->where('ficha_id',$revocada->id)->where('accion','eliminar_ficha_revocada')->exists());
+    }
+
+    public function test_borrado_masivo_por_categoria_y_alcance(): void
+    {
+        $this->login(); $r=$this->router();
+        foreach (['error','revocada','ambos'] as $categoria) {
+            $e=$this->lote($r)->fichas()->firstOrFail(); $e->update(['estado'=>'error']);
+            $v=$this->lote($r)->fichas()->firstOrFail(); app(FichasService::class)->revocar($v,1);
+            $empleado=$this->empleado($r); $empleado->update(['estado'=>'error']);
+            $otroRouter=$this->router(); $otra=$this->lote($otroRouter)->fichas()->firstOrFail(); $otra->update(['estado'=>'error']);
+            $d=['empleados'=>0,'router_id'=>$r->id,'modo'=>'todos','estados'=>$categoria,'confirmar'=>1];
+            $this->delete(route('mt.fichas.eliminar'),$d)->assertRedirect();
+            $this->assertSame($categoria==='revocada',Ficha::find($e->id)!==null);
+            $this->assertSame($categoria==='error',Ficha::find($v->id)!==null);
+            $this->assertNotNull(Ficha::find($empleado->id)); $this->assertNotNull(Ficha::find($otra->id));
+        }
+    }
+
+    public function test_borrado_rechaza_activas_revocaciones_pendientes_y_seleccion_invalida(): void
+    {
+        $this->login(); $r=$this->router(); $activa=$this->lote($r)->fichas()->firstOrFail();
+        $pendiente=$this->lote($r)->fichas()->firstOrFail(); $pendiente->update(['estado'=>'revocacion_pendiente','revocada_at'=>CarbonImmutable::now('UTC')]);
+        $d=['empleados'=>0,'modo'=>'seleccion','confirmar'=>1];
+        foreach ([$activa,$pendiente] as $f) {
+            $d['fichas']=[$f->id]; $this->deleteJson(route('mt.fichas.eliminar'),$d)->assertUnprocessable();
+            $this->assertNotNull(Ficha::find($f->id));
+        }
+        unset($d['fichas']); $this->deleteJson(route('mt.fichas.eliminar'),$d)->assertUnprocessable();
+        $d['fichas']=[$activa->id,$activa->id]; $this->deleteJson(route('mt.fichas.eliminar'),$d)->assertUnprocessable();
+        $d['fichas']=[$activa->id]; $d['empleados']=1; $this->deleteJson(route('mt.fichas.eliminar'),$d)->assertNotFound();
+        $this->permitir=false; $this->deleteJson(route('mt.fichas.eliminar'),$d)->assertForbidden();
+    }
+
+    public function test_borrado_revocada_reconfirma_bloqueo_y_conserva_si_no_hay_conexion(): void
+    {
+        $this->login(); $r=$this->router(); $f=$this->lote($r)->fichas()->firstOrFail(); app(FichasService::class)->revocar($f,1);
+        $d=['empleados'=>0,'modo'=>'todos','estados'=>'revocada','confirmar'=>1];
+        $this->api->offline=true; $this->delete(route('mt.fichas.eliminar'),$d)->assertRedirect();
+        $this->assertNotNull(Ficha::find($f->id));
+        $this->api->offline=false; $this->api->tablas['/ip/hotspot/user'][0]['disabled']='no';
+        $this->delete(route('mt.fichas.eliminar'),$d)->assertRedirect();
+        $this->assertNull(Ficha::find($f->id)); $this->assertSame('yes',$this->api->tablas['/ip/hotspot/user'][0]['disabled']);
+    }
+
     public function test_api_decodifica_filas_y_nunca_trata_trap_como_exito(): void
     {
         $filas=RespuestaApi::filas(['!re','=.id=*A','=name=a=b','!re','=.id=*B','=name=Segundo','!done']);
@@ -647,6 +764,7 @@ class MikrotikHotspotTest extends TestCase
         RespuestaApi::filas(['!trap','=message=not enough permissions','!done']);
     }
 }
+
 
 
 
