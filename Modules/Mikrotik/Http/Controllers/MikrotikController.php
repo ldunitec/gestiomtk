@@ -18,7 +18,7 @@ class MikrotikController extends Controller
     public function index()
     {
         return view('mikrotik::index', ['routers' => Router::orderBy('nombre')->get(),
-            'activas' => Ficha::where('estado', 'activa')->whereNull('revocada_at')->where('vence_at', '>', CarbonImmutable::now('UTC'))->count(),
+            'activas' => Ficha::where('estado', 'activa')->whereNull('revocada_at')->where(fn ($v) => $v->whereNull('vence_at')->orWhere('vence_at', '>', CarbonImmutable::now('UTC')))->count(),
             'pendientes' => Ficha::whereIn('estado', ['pendiente','error','revocacion_pendiente'])->count(),
             'eventos' => DB::table('mt_eventos')->join('mt_routers', 'mt_routers.id', '=', 'mt_eventos.router_id')
                 ->select('mt_eventos.*', 'mt_routers.nombre')->orderByDesc('mt_eventos.id')->limit(20)->get()]);
@@ -115,22 +115,39 @@ class MikrotikController extends Controller
         } catch (ErrorRouter $e) { return back()->withErrors(['router' => $e->getMessage()]); }
     }
 
-    public function fichas(Request $r)
+    public function empleados(Request $r)
+    {
+        return $this->fichas($r, true);
+    }
+
+    public function fichas(Request $r, bool $empleados = false)
     {
         $d = $r->validate(['router_id' => 'nullable|integer|exists:mt_routers,id', 'q' => 'nullable|string|max:100',
             'estado' => ['nullable', Rule::in(['activa','error','pendiente','revocacion_pendiente','revocada','vencida'])]]);
         $q = Ficha::with(['router','lote']);
+        $empleados ? $q->where('inicio_vigencia', 'permanente') : $q->where('inicio_vigencia', '!=', 'permanente');
         if (!empty($d['router_id'])) { $q->where('router_id', $d['router_id']); }
         if (!empty($d['q'])) { $q->where('usuario', 'like', '%'.$d['q'].'%'); }
         if (!empty($d['estado'])) {
             if ($d['estado'] === 'vencida') { $q->whereNull('revocada_at')->where('vence_at', '<=', CarbonImmutable::now('UTC')); }
             else {
                 $q->where('estado', $d['estado']);
-                if ($d['estado'] === 'activa') { $q->whereNull('revocada_at')->where('vence_at', '>', CarbonImmutable::now('UTC')); }
+                if ($d['estado'] === 'activa') { $q->whereNull('revocada_at')->where(fn ($v) => $v->whereNull('vence_at')->orWhere('vence_at', '>', CarbonImmutable::now('UTC'))); }
             }
         }
         return view('mikrotik::fichas', ['fichas' => $q->latest('id')->paginate(30)->withQueryString(),
-            'routers' => Router::orderBy('nombre')->get(), 'solicitud' => (string) Str::uuid()]);
+            'empleados' => $empleados, 'routers' => Router::orderBy('nombre')->get(), 'solicitud' => (string) Str::uuid()]);
+    }
+
+    public function crearEmpleado(Request $r)
+    {
+        $d = $r->validate(['router_id' => 'required|integer|exists:mt_routers,id',
+            'visitante' => 'required|string|max:100', 'solicitud_uuid' => 'required|uuid']);
+        $d['dias'] = 0;
+        $d['cantidad'] = 1;
+        $lote = $this->service->crear(Router::findOrFail($d['router_id']), $d, $r->user()->id, true);
+        $result = $this->service->publicar($lote, $r->user()->id);
+        return redirect()->route('mt.lote', $lote)->with('ok', $result['correctas'].' fichas de empleado confirmadas; '.$result['errores'].' pendientes por error.');
     }
 
     public function crear(Request $r)
@@ -179,7 +196,7 @@ class MikrotikController extends Controller
     public function conciliar(Request $r, Router $router)
     {
         $n = $this->service->conciliar($router->id, $r->user()->id);
-        return back()->with($n ? 'aviso' : 'ok', $n ? $n.' bloqueos siguen pendientes de confirmación.' : 'Vencimientos y revocaciones conciliados.');
+        return back()->with($n ? 'aviso' : 'ok', $n ? $n.' fichas siguen pendientes de sincronización o bloqueo.' : 'Primeros ingresos, vencimientos y revocaciones sincronizados.');
     }
 
     public function elegirSesiones()
@@ -208,3 +225,4 @@ class MikrotikController extends Controller
         }
     }
 }
+

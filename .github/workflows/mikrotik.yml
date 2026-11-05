@@ -7,6 +7,7 @@ on:
       - 'config/adminlte.php'
       - 'modules_statuses.json'
       - 'tests/Feature/MikrotikHotspotTest.php'
+      - 'tests/Feature/MikrotikMigracionTest.php'
       - 'tests/Unit/MikrotikTransporteTest.php'
       - 'tests/Support/FlujoFragmentado.php'
       - '.github/workflows/mikrotik.yml'
@@ -17,6 +18,19 @@ permissions:
 jobs:
   mikrotik:
     runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: testing
+          MARIADB_DATABASE: mikrotik_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     env:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
@@ -40,7 +54,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite, pdo_mysql
           tools: composer:v2
           coverage: none
       - run: composer install --prefer-dist --no-interaction --no-progress
@@ -50,3 +64,8 @@ jobs:
         run: |
           vendor/bin/phpunit tests/Unit/MikrotikTransporteTest.php
           vendor/bin/phpunit tests/Feature/MikrotikHotspotTest.php
+
+      - name: Probar actualización de MariaDB con fichas anteriores
+        env:
+          MIKROTIK_TEST_MYSQL: '1'
+        run: vendor/bin/phpunit tests/Feature/MikrotikMigracionTest.php

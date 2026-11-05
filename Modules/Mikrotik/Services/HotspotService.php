@@ -98,34 +98,48 @@ class HotspotService
 
     private function comentario(Ficha $f): string
     {
-        return $f->router->marcador().':'.$f->vence_at->timestamp;
+        return VigenciaFicha::inicial($f);
     }
 
     private function verificarPropiedad(array $u, Ficha $f): void
     {
-        if (($u['comment'] ?? '') !== $this->comentario($f) || ($u['profile'] ?? '') !== $f->router->perfil()
+        if (($u['profile'] ?? '') !== $f->router->perfil()
             || ($u['server'] ?? '') !== $f->router->servidor_hotspot) {
             throw new ErrorRouter('Existe un usuario con el mismo nombre que no corresponde a esta ficha. No se modificó.');
         }
+        VigenciaFicha::registrar($f, $u['comment'] ?? '');
     }
 
     public function publicar(Conexion $api, Ficha $f): void
     {
         $u = $this->usuario($api, $f);
         if ($u) { $this->verificarPropiedad($u, $f); }
+        elseif ($f->activada_at || $f->sincronizada_at || $f->estado === 'activa') {
+            throw new ErrorRouter('El usuario publicado desapareció del router. No se recreó para evitar reiniciar su vigencia.');
+        }
         $datos = ['password' => $f->clave, 'profile' => $f->router->perfil(), 'server' => $f->router->servidor_hotspot,
-            'comment' => $this->comentario($f), 'disabled' => 'yes'];
+            'disabled' => 'yes'];
+        if (!$u) { $datos['comment'] = $this->comentario($f); }
         $api->ejecutar('/ip/hotspot/user/'.($u ? 'set' : 'add'), array_merge($datos, $u ? ['.id' => $u['.id']] : ['name' => $f->usuario]));
         $u = $this->usuario($api, $f);
         if (!$u) { throw new ErrorRouter('No se confirmó la creación en el router. Reintente la misma ficha.'); }
         $this->verificarPropiedad($u, $f);
-        if ($f->vence_at->isPast() || $f->revocada_at) { throw new ErrorRouter('La ficha ya venció o fue revocada.'); }
+        if ($f->vencida() || $f->revocada_at) { throw new ErrorRouter('La ficha ya venció o fue revocada.'); }
+        // Conservar la confirmación previa incluso si se pierde la respuesta al habilitar.
+        $f->update(['sincronizada_at' => CarbonImmutable::now('UTC')]);
         $api->ejecutar('/ip/hotspot/user/set', ['.id' => $u['.id'], 'disabled' => 'no']);
         $verificado = $this->usuario($api, $f);
         if (!$verificado || $this->esSi($verificado['disabled'] ?? true)) {
             throw new ErrorRouter('El router no confirmó la habilitación de la ficha.');
         }
         $this->verificarPropiedad($verificado, $f);
+    }
+
+    public function sincronizar(Conexion $api, Ficha $f): void
+    {
+        $u = $this->usuario($api, $f);
+        if (!$u) { throw new ErrorRouter('No se encontró la ficha en el router para sincronizar su primer ingreso.'); }
+        $this->verificarPropiedad($u, $f);
     }
 
     public function desconectar(Conexion $api, Ficha $f): void
@@ -161,3 +175,4 @@ class HotspotService
         return $api->ejecutar('/ip/hotspot/active/print', ['.proplist' => 'user,address,mac-address,uptime,bytes-in,bytes-out,server'], ['server' => $r->servidor_hotspot]);
     }
 }
+

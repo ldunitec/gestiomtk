@@ -16,6 +16,8 @@ Route::middleware('can:mikrotik.ver')->group(function () {
     Route::get('/routers/{router}/estado', [C::class, 'estado'])->name('estado');
 });
 Route::middleware('can:mikrotik.fichas')->group(function () {
+    Route::get('/empleados', [C::class, 'empleados'])->name('empleados');
+    Route::post('/empleados', [C::class, 'crearEmpleado'])->name('empleados.crear');
     Route::get('/fichas', [C::class, 'fichas'])->name('fichas');
     Route::post('/fichas', [C::class, 'crear'])->name('crear');
     Route::get('/lotes/{lote}', [C::class, 'lote'])->name('lote');
@@ -29,3 +31,4 @@ Route::middleware('can:mikrotik.sesiones')->group(function () {
     Route::get('/routers/{router}/sesiones', [C::class, 'sesiones'])->name('sesiones');
     Route::post('/fichas/{ficha}/desconectar', [C::class, 'desconectar'])->name('desconectar');
 });
+
