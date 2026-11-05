@@ -61,12 +61,14 @@ class MikrotikTransporteTest extends TestCase
         $source = str_repeat(":local texto \"a=b\";\n", 400);
         FlujoFragmentado::$entrada = $this->wire([
             ['!re', '=.id=*A', '=source='.$source], ['!done'],
-            ['!re', '=name=hotspot'], ['!done'],
         ]);
         $flujo = $this->flujo();
         $p = new ProtocoloApi($flujo);
         $q = (new Query('/system/script/print'))->equal('.proplist', '.id,source');
         $this->assertSame([['.id'=>'*A', 'source'=>$source]], $p->intercambiar($q));
+        // El servidor solo produce la siguiente respuesta al recibir el siguiente comando.
+        // No precargarla: PHP descarta el read-ahead de un wrapper de archivo al escribir.
+        FlujoFragmentado::$entrada .= $this->wire([['!re', '=name=hotspot'], ['!done']]);
         $this->assertSame([['name'=>'hotspot']], $p->intercambiar(new Query('/system/identity/print')));
         $esperada = $this->wire([$q->getQuery(), ['/system/identity/print']]);
         $this->assertSame($esperada, FlujoFragmentado::$salida);
