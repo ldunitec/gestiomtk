@@ -114,7 +114,7 @@ class HotspotService
     {
         $u = $this->usuario($api, $f);
         if ($u) { $this->verificarPropiedad($u, $f); }
-        elseif ($f->activada_at || $f->estado === 'activa') {
+        elseif ($f->activada_at || $f->sincronizada_at || $f->estado === 'activa') {
             throw new ErrorRouter('El usuario publicado desapareció del router. No se recreó para evitar reiniciar su vigencia.');
         }
         $datos = ['password' => $f->clave, 'profile' => $f->router->perfil(), 'server' => $f->router->servidor_hotspot,
@@ -125,6 +125,8 @@ class HotspotService
         if (!$u) { throw new ErrorRouter('No se confirmó la creación en el router. Reintente la misma ficha.'); }
         $this->verificarPropiedad($u, $f);
         if ($f->vencida() || $f->revocada_at) { throw new ErrorRouter('La ficha ya venció o fue revocada.'); }
+        // Conservar la confirmación previa incluso si se pierde la respuesta al habilitar.
+        $f->update(['sincronizada_at' => CarbonImmutable::now('UTC')]);
         $api->ejecutar('/ip/hotspot/user/set', ['.id' => $u['.id'], 'disabled' => 'no']);
         $verificado = $this->usuario($api, $f);
         if (!$verificado || $this->esSi($verificado['disabled'] ?? true)) {

@@ -467,6 +467,18 @@ class MikrotikHotspotTest extends TestCase
         $this->assertCount(0,$this->api->tablas['/ip/hotspot/user']);
     }
 
+    public function test_no_recrea_pendiente_publicada_aunque_un_error_haya_ocultado_su_estado(): void
+    {
+        $r=$this->router(); $s=app(FichasService::class);
+        $l=$s->crear($r,$this->datos($r),1); $s->publicar($l,1);
+        $f=$l->fichas()->firstOrFail(); $this->assertNotNull($f->sincronizada_at);
+        $this->api->offline=true; $s->publicar($l,1,true);
+        $this->assertSame('error',$f->fresh()->estado);
+        $this->api->offline=false; $this->api->tablas['/ip/hotspot/user']=[];
+        $this->assertSame(1,$s->publicar($l,1,true)['errores']);
+        $this->assertCount(0,$this->api->tablas['/ip/hotspot/user']);
+    }
+
     public function test_ficha_activada_caduca_aunque_se_desconecte_y_no_se_rehabilita(): void
     {
         $r=$this->router(); $s=app(FichasService::class);
