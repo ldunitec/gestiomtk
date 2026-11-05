@@ -512,6 +512,42 @@ class MikrotikHotspotTest extends TestCase
         $this->assertSame('yes',$this->api->tablas['/ip/hotspot/user'][0]['disabled']);
     }
 
+    public function test_impresion_seleccionada_solo_incluye_fichas_del_lote_y_conserva_vigencia(): void
+    {
+        $this->login(); $r=$this->router(); $l=$this->lote($r,2,3);
+        [$a,$b,$c]=$l->fichas()->orderBy('id')->get()->all();
+        $estado=$a->only(['estado','vence_at','activada_at','sincronizada_at']);
+        $escrituras=count($this->api->escrituras);
+        $this->get(route('mt.lote',$l))->assertOk()->assertSee('Imprimir lote completo (3)')->assertSee('Imprimir seleccionadas');
+        $url=route('mt.imprimir',['lote'=>$l,'seleccion'=>1,'fichas'=>[$a->id,$c->id]]);
+        $this->get($url)->assertOk()->assertSee($a->clave)->assertSee($c->clave)->assertDontSee($b->clave)
+            ->assertSee('2 fichas listas para imprimir')->assertHeader('Cache-Control','no-store, private');
+        $this->assertEquals($estado,$a->fresh()->only(array_keys($estado)));
+        $this->assertSame($escrituras,count($this->api->escrituras));
+        $otro=$this->lote($r)->fichas()->firstOrFail();
+        $this->get(route('mt.imprimir',['lote'=>$l,'fichas'=>[$a->id,$otro->id]]))->assertNotFound();
+        $this->getJson(route('mt.imprimir',['lote'=>$l,'seleccion'=>1]))->assertUnprocessable();
+        $this->getJson(route('mt.imprimir',['lote'=>$l,'fichas'=>[$a->id,$a->id]]))->assertUnprocessable();
+        $this->getJson(route('mt.imprimir',['lote'=>$l,'ficha_id'=>$a->id,'fichas'=>[$c->id]]))->assertUnprocessable();
+        app(FichasService::class)->revocar($c,1);
+        $this->get($url)->assertOk()->assertSee($a->clave)->assertDontSee($c->clave)->assertSee('Se omitieron 1 fichas');
+        $this->get(route('mt.imprimir',['lote'=>$l,'fichas'=>[$c->id]]))->assertUnprocessable();
+    }
+
+    public function test_imprime_nombre_del_empleado_escapado_en_ficha_individual_y_lote(): void
+    {
+        $this->login(); $r=$this->router(); $d=$this->datos($r);
+        $d['visitante']='Luis Díaz <script>alert(1)</script>'; $d['dias']=0; $d['cantidad']=1;
+        $l=app(FichasService::class)->crear($r,$d,1,true);
+        app(FichasService::class)->publicar($l,1); $f=$l->fichas()->firstOrFail();
+        foreach ([['lote'=>$l],['lote'=>$l,'ficha_id'=>$f->id],['lote'=>$l,'seleccion'=>1,'fichas'=>[$f->id]]] as $parametros) {
+            $this->get(route('mt.imprimir',$parametros))->assertOk()->assertSee('Empleado')->assertSee($d['visitante'])
+                ->assertDontSee('<script>alert(1)</script>',false)->assertSee('Sin vencimiento')->assertSee($f->clave);
+        }
+        $this->assertNull($f->fresh()->activada_at);
+        $this->assertNull($f->fresh()->vence_at);
+    }
+
     public function test_api_decodifica_filas_y_nunca_trata_trap_como_exito(): void
     {
         $filas=RespuestaApi::filas(['!re','=.id=*A','=name=a=b','!re','=.id=*B','=name=Segundo','!done']);
@@ -520,4 +556,5 @@ class MikrotikHotspotTest extends TestCase
         RespuestaApi::filas(['!trap','=message=not enough permissions','!done']);
     }
 }
+
 

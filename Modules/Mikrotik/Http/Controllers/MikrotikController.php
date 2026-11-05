@@ -173,12 +173,24 @@ class MikrotikController extends Controller
 
     public function imprimir(Request $r, Lote $lote)
     {
-        $r->validate(['ficha_id' => 'nullable|integer']);
+        $d = $r->validate([
+            'ficha_id' => 'nullable|integer|min:1|prohibits:fichas,seleccion',
+            'seleccion' => 'sometimes|in:1',
+            'fichas' => 'required_if:seleccion,1|nullable|array|min:1|max:20',
+            'fichas.*' => 'required|integer|min:1|distinct',
+        ]);
         $fichas = $lote->fichas()->with('router')->get();
         if ($id = $r->input('ficha_id')) {
             $fichas = $fichas->where('id', (int) $id);
             abort_if($fichas->isEmpty(), 404);
             abort_unless($fichas->first()->imprimible(), 422, 'La ficha no está confirmada, fue revocada o ya venció.');
+        }
+        if (isset($d['fichas'])) {
+            $ids = array_map('intval', $d['fichas']);
+            $seleccionadas = $fichas->whereIn('id', $ids);
+            // Validar todas las fichas dentro del lote: no ignorar IDs ajenos.
+            abort_if($seleccionadas->count() !== count($ids), 404);
+            $fichas = $seleccionadas;
         }
         $omitidas = $fichas->filter(fn ($f) => !$f->imprimible())->count();
         $fichas = $fichas->filter(fn ($f) => $f->imprimible());
@@ -225,4 +237,5 @@ class MikrotikController extends Controller
         }
     }
 }
+
 
