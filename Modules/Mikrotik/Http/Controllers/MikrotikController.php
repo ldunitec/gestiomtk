@@ -53,7 +53,7 @@ class MikrotikController extends Controller
             if (isset($d['password']) && $d['password'] !== '') { $d['clave_api'] = $d['password']; }
             unset($d['password']);
             // Evitar redirigir fichas emitidas a otro equipo/Hotspot por una edición accidental.
-            if ($router->exists && $router->fichas()->exists()) {
+            if ($router->exists && $router->fichas()->withTrashed()->exists()) {
                 foreach (['host','puerto','tls','servidor_hotspot','portal_url','ssid'] as $campo) {
                     $anterior = $campo === 'tls' ? (int) $router->$campo : $router->$campo;
                     $nuevo = $campo === 'tls' ? (int) $d[$campo] : $d[$campo];
@@ -123,11 +123,17 @@ class MikrotikController extends Controller
     public function fichas(Request $r, bool $empleados = false)
     {
         $d = $r->validate(['router_id' => 'nullable|integer|exists:mt_routers,id', 'q' => 'nullable|string|max:100',
+            'impresion' => ['nullable', Rule::in(['pendientes','impresas'])],
             'estado' => ['nullable', Rule::in(['activa','error','pendiente','revocacion_pendiente','revocada','vencida'])]]);
         $q = Ficha::with(['router','lote']);
         $empleados ? $q->where('inicio_vigencia', 'permanente') : $q->where('inicio_vigencia', '!=', 'permanente');
         if (!empty($d['router_id'])) { $q->where('router_id', $d['router_id']); }
-        if (!empty($d['q'])) { $q->where('usuario', 'like', '%'.$d['q'].'%'); }
+        if (!empty($d['q'])) { $q->where(function ($busqueda) use ($d) {
+            $busqueda->where('usuario', 'like', '%'.$d['q'].'%')->orWhere('nombre', 'like', '%'.$d['q'].'%')
+                ->orWhere(function ($heredada) use ($d) { $heredada->whereNull('nombre')->whereHas('lote', fn ($l) => $l->where('visitante', 'like', '%'.$d['q'].'%')); });
+        }); }
+        if (($d['impresion'] ?? '') === 'pendientes') { $q->disponiblesParaImprimir()->whereNull('impresa_at'); }
+        if (($d['impresion'] ?? '') === 'impresas') { $q->whereNotNull('impresa_at'); }
         if (!empty($d['estado'])) {
             if ($d['estado'] === 'vencida') { $q->whereNull('revocada_at')->where('vence_at', '<=', CarbonImmutable::now('UTC')); }
             else {
@@ -179,7 +185,7 @@ class MikrotikController extends Controller
             'fichas' => 'required_if:seleccion,1|nullable|array|min:1|max:20',
             'fichas.*' => 'required|integer|min:1|distinct',
         ]);
-        $fichas = $lote->fichas()->with('router')->get();
+        $fichas = $lote->fichas()->with(['router','lote'])->get();
         if ($id = $r->input('ficha_id')) {
             $fichas = $fichas->where('id', (int) $id);
             abort_if($fichas->isEmpty(), 404);
@@ -196,6 +202,91 @@ class MikrotikController extends Controller
         $fichas = $fichas->filter(fn ($f) => $f->imprimible());
         abort_if($fichas->isEmpty(), 422, 'El lote no tiene fichas activas, confirmadas y vigentes para imprimir.');
         return response()->view('mikrotik::imprimir', compact('lote','fichas','omitidas'))->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    private function alcanceFichas(array $d)
+    {
+        $q = Ficha::query();
+        ($d['empleados'] ?? false) ? $q->where('inicio_vigencia', 'permanente') : $q->where('inicio_vigencia', '!=', 'permanente');
+        if (!empty($d['router_id'])) { $q->where('router_id', $d['router_id']); }
+        return $q;
+    }
+
+    public function imprimirListado(Request $r)
+    {
+        $d = $r->validate(['empleados'=>'required|boolean', 'router_id'=>'nullable|integer|exists:mt_routers,id',
+            'modo'=>'required|in:todas,pendientes,seleccion',
+            'fichas'=>'required_if:modo,seleccion|nullable|array|min:1|max:500', 'fichas.*'=>'required|integer|min:1|distinct']);
+        $q = $this->alcanceFichas($d)->with(['router','lote']);
+        if ($d['modo'] === 'seleccion') {
+            $ids = array_map('intval', $d['fichas']);
+            $fichas = $q->whereIn('id', $ids)->orderBy('id')->get();
+            abort_if($fichas->count() !== count($ids), 404);
+            // Las seleccionadas del panel deben seguir activas y sin impresión confirmada.
+            $validas = $fichas->filter(fn ($f) => $f->imprimible() && !$f->impresa_at);
+            $omitidas = $fichas->count() - $validas->count();
+            $fichas = $validas;
+        } else {
+            $q->disponiblesParaImprimir();
+            if ($d['modo'] === 'pendientes') { $q->whereNull('impresa_at'); }
+            $fichas = $q->orderBy('lote_id')->orderBy('id')->get();
+            $omitidas = 0;
+        }
+        abort_if($fichas->isEmpty(), 422, 'No hay fichas disponibles para esta impresión.');
+        $lote = null;
+        return response()->view('mikrotik::imprimir', compact('lote','fichas','omitidas'))
+            ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    public function confirmarImpresion(Request $r)
+    {
+        $d = $r->validate(['seleccion_impresa'=>'required|string|json']);
+        $lista = json_decode($d['seleccion_impresa'], true);
+        $d = \Illuminate\Support\Facades\Validator::make(['fichas'=>$lista], ['fichas'=>'required|array|min:1', 'fichas.*'=>'required|integer|min:1|distinct'])->validate();
+        $ids = array_map('intval', $d['fichas']);
+        $resultado = DB::transaction(function () use ($ids, $r) {
+            $fichas = Ficha::whereIn('id', $ids)->lockForUpdate()->get();
+            abort_if($fichas->count() !== count($ids), 404);
+            $n = 0;
+            foreach ($fichas as $f) {
+                if ($f->impresa_at || !$f->imprimible()) { continue; }
+                $f->update(['impresa_at'=>CarbonImmutable::now('UTC'),'impresa_por'=>$r->user()->id]);
+                $this->service->evento($f->router, 'confirmar_impresion', true, $r->user()->id, $f->id);
+                $n++;
+            }
+            return ['n'=>$n, 'empleados'=>$fichas->first()->inicio_vigencia === 'permanente'];
+        });
+        return redirect()->route($resultado['empleados'] ? 'mt.empleados' : 'mt.fichas')->with('ok', $resultado['n'].' fichas registradas como impresas. Las fechas de impresión anteriores se conservan.');
+    }
+
+    public function editarFicha(Ficha $ficha)
+    {
+        $ficha->load(['router','lote']);
+        return view('mikrotik::editar-ficha', compact('ficha'));
+    }
+
+    public function actualizarFicha(Request $r, Ficha $ficha)
+    {
+        $d = $r->validate(['nombre'=>($ficha->inicio_vigencia === 'permanente' ? 'required' : 'nullable').'|string|max:100']);
+        DB::transaction(function () use ($ficha, $d, $r) {
+            $ficha = Ficha::whereKey($ficha->id)->lockForUpdate()->firstOrFail();
+            $ficha->update(['nombre'=>$d['nombre'] ?? '']);
+            $this->service->evento($ficha->router, 'editar_ficha', true, $r->user()->id, $ficha->id);
+        });
+        return redirect()->route($ficha->inicio_vigencia === 'permanente' ? 'mt.empleados' : 'mt.fichas')->with('ok', 'Nombre de la ficha actualizado.');
+    }
+
+    public function eliminarErrores(Request $r)
+    {
+        $d = $r->validate(['empleados'=>'required|boolean','router_id'=>'nullable|integer|exists:mt_routers,id','confirmar'=>'accepted']);
+        $ids = $this->alcanceFichas($d)->where('estado','error')->pluck('id');
+        $eliminadas = 0; $pendientes = 0;
+        foreach ($ids as $id) {
+            $resultado = $this->service->eliminarError((int) $id, $r->user()->id);
+            if ($resultado === true) { $eliminadas++; }
+            elseif ($resultado === false) { $pendientes++; }
+        }
+        return back()->with($pendientes ? 'aviso' : 'ok', $eliminadas.' fichas con error eliminadas. '.$pendientes.' conservadas porque no se confirmó su bloqueo en el router.');
     }
 
     public function revocar(Request $r, Ficha $ficha)
@@ -237,5 +328,6 @@ class MikrotikController extends Controller
         }
     }
 }
+
 
 
