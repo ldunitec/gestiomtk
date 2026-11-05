@@ -102,6 +102,8 @@ class MikrotikController extends Controller
             });
             return redirect()->route('mt.configuracion')->with('ok', 'Hotspot preparado: perfiles y control de vencimiento verificados.');
         } catch (ErrorRouter $e) {
+            // Los cambios remotos no se revierten junto a la transacción SQL.
+            $router->update(['preparado_at' => null]);
             $this->service->evento($router, 'preparar_hotspot', false, $r->user()->id);
             return back()->withErrors(['router' => $e->getMessage()]);
         }
@@ -276,17 +278,30 @@ class MikrotikController extends Controller
         return redirect()->route($ficha->inicio_vigencia === 'permanente' ? 'mt.empleados' : 'mt.fichas')->with('ok', 'Nombre de la ficha actualizado.');
     }
 
-    public function eliminarErrores(Request $r)
+    public function eliminarFichas(Request $r)
     {
-        $d = $r->validate(['empleados'=>'required|boolean','router_id'=>'nullable|integer|exists:mt_routers,id','confirmar'=>'accepted']);
-        $ids = $this->alcanceFichas($d)->where('estado','error')->pluck('id');
+        $d = $r->validate(['empleados'=>'required|boolean','router_id'=>'nullable|integer|exists:mt_routers,id',
+            'confirmar'=>'accepted','modo'=>'sometimes|in:seleccion,todos', 'estados'=>'sometimes|in:error,revocada,ambos',
+            'fichas'=>'required_if:modo,seleccion|nullable|array|min:1|max:500', 'fichas.*'=>'required|integer|min:1|distinct']);
+        $q = $this->alcanceFichas($d);
+        if (($d['modo'] ?? 'todos') === 'seleccion') {
+            $seleccion = array_map('intval', $d['fichas']);
+            $fichas = $q->whereIn('id', $seleccion)->get(['id','estado']);
+            abort_if($fichas->count() !== count($seleccion), 404);
+            abort_if($fichas->contains(fn ($f) => !in_array($f->estado, ['error','revocada'], true)), 422,
+                'Solo se pueden eliminar fichas con error o revocación confirmada.');
+            $ids = $fichas->pluck('id');
+        } else {
+            $estados = match ($d['estados'] ?? 'error') { 'revocada'=>['revocada'], 'ambos'=>['error','revocada'], default=>['error'] };
+            $ids = $q->whereIn('estado', $estados)->pluck('id');
+        }
         $eliminadas = 0; $pendientes = 0;
         foreach ($ids as $id) {
-            $resultado = $this->service->eliminarError((int) $id, $r->user()->id);
+            $resultado = $this->service->eliminarFicha((int) $id, $r->user()->id);
             if ($resultado === true) { $eliminadas++; }
             elseif ($resultado === false) { $pendientes++; }
         }
-        return back()->with($pendientes ? 'aviso' : 'ok', $eliminadas.' fichas con error eliminadas. '.$pendientes.' conservadas porque no se confirmó su bloqueo en el router.');
+        return back()->with($pendientes ? 'aviso' : 'ok', $eliminadas.' fichas eliminadas. '.$pendientes.' conservadas porque no se confirmó su bloqueo en el router.');
     }
 
     public function revocar(Request $r, Ficha $ficha)
@@ -328,6 +343,7 @@ class MikrotikController extends Controller
         }
     }
 }
+
 
 
 

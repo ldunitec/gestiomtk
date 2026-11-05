@@ -84,25 +84,26 @@ class FichasService
         });
     }
 
-    public function eliminarError(int $id, int $actor): ?bool
+    public function eliminarFicha(int $id, int $actor): ?bool
     {
         $routerId = Ficha::whereKey($id)->value('router_id');
         if (!$routerId) { return null; }
         return DB::transaction(function () use ($id, $actor, $routerId) {
             $r = Router::whereKey($routerId)->lockForUpdate()->firstOrFail();
             $f = Ficha::whereKey($id)->lockForUpdate()->first();
-            if (!$f || $f->estado !== 'error') { return null; }
+            if (!$f || !in_array($f->estado, ['error','revocada'], true)) { return null; }
             $f->setRelation('router', $r);
+            $accion = $f->estado === 'error' ? 'eliminar_ficha_error' : 'eliminar_ficha_revocada';
             try {
                 $this->hotspot->bloquear($this->factory->abrir($r), $f);
                 $f->update(['revocada_at'=>$f->revocada_at ?? CarbonImmutable::now('UTC'), 'estado'=>'revocada', 'error'=>null]);
-                $this->evento($r, 'eliminar_ficha_error', true, $actor, $f->id);
+                $this->evento($r, $accion, true, $actor, $f->id);
                 // Conservar historial, UUID del lote y credenciales cifradas sin reactivación.
                 $f->delete();
                 return true;
             } catch (ErrorRouter $e) {
                 $f->update(['error'=>$e->getMessage()]);
-                $this->evento($r, 'eliminar_ficha_error', false, $actor, $f->id);
+                $this->evento($r, $accion, false, $actor, $f->id);
                 return false;
             }
         });
@@ -161,5 +162,6 @@ class FichasService
         });
     }
 }
+
 
 

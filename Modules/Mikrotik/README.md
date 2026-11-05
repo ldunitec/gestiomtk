@@ -49,7 +49,7 @@ Después de actualizar esta compatibilidad, abra **Configuración → Revisar pr
 3. Configure la velocidad por visitante: formato subida/bajada de RouterOS, por ejemplo `2M/5M`.
 4. Pulse **Probar conexión**. Esta prueba solo lee recursos, identidad, interfaces y el servidor Hotspot.
 5. Abra **Revisar preparación del Hotspot**. Allí se muestran los objetos y el código que se instalarán. Confirme con **Preparar y verificar Hotspot**.
-6. La preparación crea o actualiza un perfil, un script y un scheduler con nombres exclusivos derivados del UUID del router, prefijados `gmtk-`. No altera perfiles de otros clientes. No edite manualmente esos objetos ni los comentarios de sus usuarios.
+6. La preparación crea o actualiza dos perfiles (visitantes y empleados), un script y un scheduler con nombres exclusivos derivados del UUID del router, prefijados `gmtk-`. No altera perfiles de otros clientes. No edite manualmente esos objetos ni los comentarios de sus usuarios.
 
 API-SSL verifica el certificado y el nombre del equipo. Para una CA privada ausente en PHP puede establecer en el `.env` del servidor:
 
@@ -90,7 +90,7 @@ La migración admite la instalación existente MariaDB/MySQL y nuevas bases SQLi
 
 Vuelva a **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** en cada router: instala el nuevo on-login y barrido conservando los usuarios existentes. Hasta prepararlo, la publicación se rechazará. Mantenga el reloj/NTP correcto.
 
-En **Fichas de empleados**, escriba el nombre y seleccione el router. Se emite una ficha individual, cifrada y con QR, **sin vencimiento** y un dispositivo simultáneo. Puede reimprimirse o revocarse desde su lote. Una revocación sin conexión queda pendiente hasta confirmar el bloqueo. Comparte el permiso `mikrotik.fichas` y los límites de velocidad del perfil del módulo.
+En **Fichas de empleados**, escriba el nombre y seleccione el router. Se emite una ficha individual, cifrada y con QR, **sin vencimiento** y un dispositivo simultáneo. Puede reimprimirse o revocarse desde su lote. Una revocación sin conexión queda pendiente hasta confirmar el bloqueo. Usa el permiso `mikrotik.fichas` y su perfil exclusivo `gmtk-…-empleados`, con velocidad fija **5M/5M**, independiente de la velocidad de visitantes.
 
 La impresión es de solo lectura. Si una ficha ya se activó pero aún no se sincronizó, la impresión indicará la regla de primer ingreso; no extenderá la fecha real del router. Use **Sincronizar primeros ingresos y bloqueos** para ver su fecha exacta.
 
@@ -205,3 +205,12 @@ No cambia los scripts del router. Las fichas existentes conservan su vigencia y 
 - **Confirmar impresas**, en la vista previa, registra fecha UTC y operador después de imprimir o guardar PDF. Abrir, cancelar o cerrar la vista no marca fichas. Confirmar dos veces conserva la primera fecha y no reinicia la vigencia. La reimpresión sigue disponible desde el lote o «Imprimir todas las activas».
 - **Editar** cambia el nombre o referencia de una sola ficha, que se usa también en impresión y búsqueda. Conserva credenciales y plazo. El empleado requiere nombre.
 - **Eliminar todas las fichas con error** requiere confirmar el alcance de sección y router. Antes de retirarlas, deshabilita su usuario propio y elimina sesiones/cookies. Si falta conexión o el usuario no pertenece a la ficha, conserva el registro con el error. La eliminación es lógica, conserva auditoría y lote, e impide que un reintento del lote la vuelva a publicar. No elimina otras fichas ni usuarios externos.
+
+
+## Perfil de empleados 5M/5M y borrado por selección
+
+Tras integrar esta mejora, actualice el código y ejecute `php artisan optimize:clear`. No requiere migración adicional sobre la versión que ya registra impresiones y eliminación lógica. Si no aplicó la migración anterior, ejecútela primero.
+
+Abra **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** en cada router. Instala el perfil de empleados con 5M de subida y 5M de bajada, sin vencimiento. La velocidad de visitantes conserva su configuración. Los empleados ya emitidos con el perfil de visitantes se trasladan al nuevo perfil sin cambiar credenciales, comentario E ni revocación. Se cierran sus sesiones y cookies al trasladarlos para aplicar el nuevo límite en su siguiente ingreso. Usuarios externos y visitantes no se trasladan. Si un usuario conocido no pasa la validación de propiedad, la preparación devuelve error.
+
+En el listado, la columna **Borrar** permite seleccionar fichas con error o revocación confirmada; puede mezclar ambas. **Eliminar seleccionadas** aplica a las casillas de la página actual. Para todas las páginas de esa sección/router, elija **Todas con error**, **Todas revocadas** o **Con error y revocadas**, confirme el alcance y pulse **Eliminar todas de la categoría**. Las activas, pendientes de publicación y revocaciones pendientes no se eliminan. Cada ficha se vuelve a validar y bloquear en el router; los fallos conservan el registro y la eliminación lógica mantiene el historial.

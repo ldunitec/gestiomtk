@@ -40,11 +40,38 @@ class HotspotService
         $this->guardar($api, '/ip/hotspot/user/profile', $r->perfil(), [
             'shared-users' => '1', 'add-mac-cookie' => 'no', 'rate-limit' => $r->velocidad,
             'on-login' => ScriptsHotspot::login($r)]);
+        $this->guardar($api, '/ip/hotspot/user/profile', $r->perfilEmpleados(), [
+            'shared-users' => '1', 'add-mac-cookie' => 'no', 'rate-limit' => '5M/5M',
+            'on-login' => ScriptsHotspot::login($r)]);
         $this->guardar($api, '/system/scheduler', $r->tarea(), [
             'on-event' => $r->tarea(), 'interval' => '30s', 'start-time' => '00:00:00',
             'policy' => 'read,write,policy,test', 'disabled' => 'no']);
         $this->comprobarProteccion($api, $r);
+        $this->migrarEmpleados($api, $r);
         $r->update(['preparado_at' => CarbonImmutable::now('UTC'), 'verificado_at' => CarbonImmutable::now('UTC'), 'version' => $version]);
+    }
+
+    private function migrarEmpleados(Conexion $api, Router $r): void
+    {
+        // Solo usuarios respaldados por una ficha permanente del módulo.
+        $r->fichas()->withTrashed()->where('inicio_vigencia', 'permanente')->chunkById(100, function ($fichas) use ($api, $r) {
+            foreach ($fichas as $f) {
+                $f->setRelation('router', $r);
+                $u = $this->usuario($api, $f);
+                if (!$u) { continue; }
+                $this->verificarPropiedad($u, $f);
+                if (($u['profile'] ?? '') === $r->perfilEmpleados()) { continue; }
+                $api->ejecutar('/ip/hotspot/user/set', ['.id'=>$u['.id'], 'profile'=>$r->perfilEmpleados()]);
+                $nuevo = $this->usuario($api, $f);
+                if (!$nuevo || ($nuevo['profile'] ?? '') !== $r->perfilEmpleados()
+                    || ($nuevo['disabled'] ?? '') !== ($u['disabled'] ?? '') || ($nuevo['comment'] ?? '') !== ($u['comment'] ?? '')) {
+                    throw new ErrorRouter('No se confirmó el cambio al perfil de empleados. Reintente la preparación.');
+                }
+                $this->verificarPropiedad($nuevo, $f);
+                // Las sesiones activas conservan su límite hasta el próximo ingreso.
+                $this->desconectar($api, $f);
+            }
+        });
     }
 
     private function guardar(Conexion $api, string $ruta, string $nombre, array $campos): void
@@ -75,14 +102,19 @@ class HotspotService
     {
         $script = $api->ejecutar('/system/script/print', ['.proplist' => '.id,name,source,comment'], ['name' => $r->tarea()])[0] ?? [];
         $scheduler = $api->ejecutar('/system/scheduler/print', ['.proplist' => '.id,name,on-event,interval,disabled,policy'], ['name' => $r->tarea()])[0] ?? [];
-        $perfil = $api->ejecutar('/ip/hotspot/user/profile/print', ['.proplist' => 'name,on-login,shared-users,add-mac-cookie'], ['name' => $r->perfil()])[0] ?? [];
         if ($this->normalizar($script['source'] ?? '') !== $this->normalizar(ScriptsHotspot::barrido($r))
             || ($scheduler['on-event'] ?? '') !== $r->tarea() || $this->esSi($scheduler['disabled'] ?? true)
             || !in_array($scheduler['interval'] ?? '', ['30s', '00:00:30'], true)
-            || count(array_diff(['read','write','policy','test'], explode(',', $scheduler['policy'] ?? ''))) > 0
-            || $this->normalizar($perfil['on-login'] ?? '') !== $this->normalizar(ScriptsHotspot::login($r))
-            || (string) ($perfil['shared-users'] ?? '') !== '1' || $this->esSi($perfil['add-mac-cookie'] ?? true)) {
+            || count(array_diff(['read','write','policy','test'], explode(',', $scheduler['policy'] ?? ''))) > 0) {
             throw new ErrorRouter('La protección de vigencia está incompleta o cambió. Prepare nuevamente el Hotspot antes de emitir fichas.');
+        }
+        foreach ([$r->perfil() => $r->velocidad, $r->perfilEmpleados() => '5M/5M'] as $nombre => $velocidad) {
+            $perfil = $api->ejecutar('/ip/hotspot/user/profile/print', ['.proplist' => 'name,on-login,shared-users,add-mac-cookie,rate-limit'], ['name' => $nombre])[0] ?? [];
+            if ($this->normalizar($perfil['on-login'] ?? '') !== $this->normalizar(ScriptsHotspot::login($r))
+                || (string) ($perfil['shared-users'] ?? '') !== '1' || $this->esSi($perfil['add-mac-cookie'] ?? true)
+                || ($perfil['rate-limit'] ?? '') !== $velocidad) {
+                throw new ErrorRouter('El perfil '.$nombre.' está incompleto o cambió. Prepare nuevamente el Hotspot.');
+            }
         }
         $api->ejecutar('/system/script/run', ['.id' => $script['.id']]);
         $resultado = $api->ejecutar('/system/script/print', ['.proplist' => 'comment'], ['name' => $r->tarea()])[0]['comment'] ?? '';
@@ -103,7 +135,10 @@ class HotspotService
 
     private function verificarPropiedad(array $u, Ficha $f): void
     {
-        if (($u['profile'] ?? '') !== $f->router->perfil()
+        $perfiles = [$f->router->perfilFicha($f)];
+        // Las fichas permanentes emitidas antes de separar perfiles se reconocen por E.
+        if ($f->inicio_vigencia === 'permanente') { $perfiles[] = $f->router->perfil(); }
+        if (!in_array($u['profile'] ?? '', $perfiles, true)
             || ($u['server'] ?? '') !== $f->router->servidor_hotspot) {
             throw new ErrorRouter('Existe un usuario con el mismo nombre que no corresponde a esta ficha. No se modificó.');
         }
@@ -117,7 +152,7 @@ class HotspotService
         elseif ($f->activada_at || $f->sincronizada_at || $f->estado === 'activa') {
             throw new ErrorRouter('El usuario publicado desapareció del router. No se recreó para evitar reiniciar su vigencia.');
         }
-        $datos = ['password' => $f->clave, 'profile' => $f->router->perfil(), 'server' => $f->router->servidor_hotspot,
+        $datos = ['password' => $f->clave, 'profile' => $f->router->perfilFicha($f), 'server' => $f->router->servidor_hotspot,
             'disabled' => 'yes'];
         if (!$u) { $datos['comment'] = $this->comentario($f); }
         $api->ejecutar('/ip/hotspot/user/'.($u ? 'set' : 'add'), array_merge($datos, $u ? ['.id' => $u['.id']] : ['name' => $f->usuario]));
@@ -175,4 +210,5 @@ class HotspotService
         return $api->ejecutar('/ip/hotspot/active/print', ['.proplist' => 'user,address,mac-address,uptime,bytes-in,bytes-out,server'], ['server' => $r->servidor_hotspot]);
     }
 }
+
 
