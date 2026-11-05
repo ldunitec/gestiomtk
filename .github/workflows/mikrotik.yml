@@ -7,6 +7,8 @@ on:
       - 'config/adminlte.php'
       - 'modules_statuses.json'
       - 'tests/Feature/MikrotikHotspotTest.php'
+      - 'tests/Unit/MikrotikTransporteTest.php'
+      - 'tests/Support/FlujoFragmentado.php'
       - '.github/workflows/mikrotik.yml'
 
 permissions:
@@ -45,4 +47,6 @@ jobs:
       - name: Validar sintaxis PHP
         run: find Modules/Mikrotik -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Probar fichas, cifrado, permisos y API simulada
-        run: vendor/bin/phpunit tests/Feature/MikrotikHotspotTest.php
+        run: |
+          vendor/bin/phpunit tests/Unit/MikrotikTransporteTest.php
+          vendor/bin/phpunit tests/Feature/MikrotikHotspotTest.php

@@ -127,6 +127,38 @@ Los permisos se comprueban también en las rutas de escritura. Se guarda histori
 
 La automatización cubre PHP/Laravel, cifrado, permisos, publicación idempotente, respuestas de error de API, aislamiento y conciliación con una API simulada. No reemplaza esta verificación del protocolo y los scripts contra su firmware.
 
+## Si la prueba de conexión funciona pero falla la preparación
+
+La prueba básica solo necesita respuestas pequeñas. La preparación envía y lee
+código de varias líneas, y ejecuta el script de comprobación. La librería PHP
+1.6.0 utiliza una única lectura/escritura del socket por palabra: una respuesta
+fragmentada puede quedar incompleta. El módulo usa ahora lecturas y escrituras
+completas para los comandos posteriores a la autenticación y mantiene los límites
+entre respuestas sucesivas. No modifica archivos de `vendor` ni requiere actualizar
+Composer o la base de datos.
+
+Los errores muestran la ruta de la operación, sin atributos, código fuente ni
+contraseñas. Por ejemplo, `/system/script/add` identifica la creación y
+`/system/script/run` la ejecución de la comprobación. Los rechazos de permisos,
+errores de sintaxis (con línea/columna cuando RouterOS las devuelve), interrupciones
+y tiempos de espera se distinguen del mensaje genérico anterior. Un fallo no
+habilita nuevas fichas ni marca el router como preparado.
+
+Después de integrar este ajuste, actualice la aplicación, ejecute
+`php artisan view:clear` y vuelva a **Preparar y verificar Hotspot**. No hace falta
+otra migración. Si aún falla, conserve el mensaje completo de la operación y
+consulte en WinBox → Terminal:
+
+```routeros
+/user group print detail where name="gestionmtk-api"
+/system scheduler print detail without-paging where name~"^gmtk-"
+/log print without-paging where message~"gmtk-"
+```
+
+Las pruebas del transporte usan respuestas binarias largas entregadas en
+fragmentos cortos, escritura parcial, interrupciones y mensajes de rechazo. No
+sustituyen la prueba de preparación contra el router físico.
+
 ## Referencias oficiales
 
 - [HotSpot y propiedades de usuarios](https://manual.mikrotik.com/docs/authentication-authorization-accounting/hotspot-captive-portal/)

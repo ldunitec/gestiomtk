@@ -8,6 +8,7 @@ use RouterOS\{Client, Query};
 class RouterApi implements Conexion
 {
     private Client $client;
+    private ProtocoloApi $protocolo;
 
     public function __construct(Router $router)
     {
@@ -17,7 +18,8 @@ class RouterApi implements Conexion
             $this->client = new Client(['host' => $router->host, 'port' => $router->puerto,
                 'user' => $router->usuario_api, 'pass' => $router->clave_api,
                 'ssl' => $router->tls, 'ssl_options' => $ssl,
-                'timeout' => 3, 'socket_timeout' => 5, 'attempts' => 1]);
+                'timeout' => 3, 'socket_timeout' => 10, 'attempts' => 1]);
+            $this->protocolo = new ProtocoloApi(new FlujoApi($this->client->getSocket()));
         } catch (\Throwable $e) {
             throw new ErrorRouter('No se pudo conectar. Revise API, dirección, puerto, credenciales y certificado TLS.');
         }
@@ -29,11 +31,11 @@ class RouterApi implements Conexion
             $q = new Query($ruta);
             foreach ($atributos as $k => $v) { $q->equal($k, (string) $v); }
             foreach ($filtros as $k => $v) { $q->where($k, (string) $v); }
-            return RespuestaApi::filas($this->client->query($q)->read(false));
+            return $this->protocolo->intercambiar($q);
         } catch (ErrorRouter $e) {
-            throw $e;
+            throw new ErrorRouter($e->getMessage().' Operación: '.$ruta.'.');
         } catch (\Throwable $e) {
-            throw new ErrorRouter('La comunicación con el router no terminó correctamente. Puede reintentar sin crear otra ficha.');
+            throw new ErrorRouter('No se completó la operación API '.$ruta.'. Revise los registros del router y vuelva a intentar.');
         }
     }
 }
