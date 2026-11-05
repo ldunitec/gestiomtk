@@ -702,6 +702,17 @@ class MikrotikHotspotTest extends TestCase
         catch (ErrorRouter $e) { $this->assertSame($previo,$this->api->tablas['/ip/hotspot/user'][0]); }
     }
 
+    public function test_preparacion_incompleta_no_conserva_estado_preparado_anterior(): void
+    {
+        $this->login(); $r=$this->router(); $f=$this->empleado($r);
+        $this->api->tablas['/ip/hotspot/user'][0]['profile']=$r->perfil();
+        $this->api->tablas['/ip/hotspot/user'][0]['comment']='AJENO';
+        $this->post(route('mt.preparar',$r),['confirmar'=>1])->assertRedirect()->assertSessionHasErrors('router');
+        $this->assertNull($r->fresh()->preparado_at);
+        $this->assertSame(1,app(FichasService::class)->publicar($f->lote,1,true)['errores']);
+        $this->assertSame('AJENO',$this->api->tablas['/ip/hotspot/user'][0]['comment']);
+    }
+
     public function test_elimina_seleccion_de_errores_y_revocadas_sin_tocar_otras(): void
     {
         $this->login(); $r=$this->router(); $l=$this->lote($r,1,4); [$error,$revocada,$otra,$activa]=$l->fichas()->get()->all();

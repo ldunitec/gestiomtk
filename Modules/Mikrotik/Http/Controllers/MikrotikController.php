@@ -102,6 +102,8 @@ class MikrotikController extends Controller
             });
             return redirect()->route('mt.configuracion')->with('ok', 'Hotspot preparado: perfiles y control de vencimiento verificados.');
         } catch (ErrorRouter $e) {
+            // Los cambios remotos no se revierten junto a la transacción SQL.
+            $router->update(['preparado_at' => null]);
             $this->service->evento($router, 'preparar_hotspot', false, $r->user()->id);
             return back()->withErrors(['router' => $e->getMessage()]);
         }
