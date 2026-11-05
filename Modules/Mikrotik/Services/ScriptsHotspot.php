@@ -14,7 +14,6 @@ class ScriptsHotspot
             :local gmtkUtc do={
                 :local f [:tostr [/system clock get date]];
                 :local t [:tostr [/system clock get time]];
-                :local z [:tostr [/system clock get gmt-offset]];
                 :if ($f != [:tostr [/system clock get date]]) do={ :set f [:tostr [/system clock get date]]; :set t [:tostr [/system clock get time]]; };
                 :local y 0; :local m 0; :local d 0;
                 :if (([:len $f] = 11) && ([:pick $f 3 4] = "/")) do={
@@ -39,17 +38,14 @@ class ScriptsHotspot
                 :if (($m > 2) && $leap) do={ :set days ($days + 1); };
                 :if (([:len $t] != 8) || ([:pick $t 2 3] != ":") || ([:pick $t 5 6] != ":")) do={ :return 0; };
                 :local h [:tonum [:pick $t 0 2]]; :local n [:tonum [:pick $t 3 5]]; :local s [:tonum [:pick $t 6 8]];
-                :local sign 1;
-                :if ([:pick $z 0 1] = "-") do={ :set sign -1; :set z [:pick $z 1 [:len $z]]; } else={
-                    :if ([:pick $z 0 1] = "+") do={ :set z [:pick $z 1 [:len $z]]; };
-                };
-                :if (([:len $z] != 5) && ([:len $z] != 8)) do={ :return 0; };
-                :if ([:pick $z 2 3] != ":") do={ :return 0; };
-                :if (([:len $z] = 8) && ([:pick $z 5 8] != ":00")) do={ :return 0; };
-                :local zh [:tonum [:pick $z 0 2]]; :local zm [:tonum [:pick $z 3 5]];
-                :if (([:typeof $h] != "num") || ([:typeof $n] != "num") || ([:typeof $s] != "num") || ([:typeof $zh] != "num") || ([:typeof $zm] != "num")) do={ :return 0; };
-                :if (($h < 0) || ($h > 23) || ($n < 0) || ($n > 59) || ($s < 0) || ($s > 59) || ($zh < 0) || ($zh > 14) || ($zm < 0) || ($zm > 59)) do={ :return 0; };
-                :return (($days * 86400) + ($h * 3600) + ($n * 60) + $s - ($sign * (($zh * 3600) + ($zm * 60))));
+                :if (([:typeof $h] != "num") || ([:typeof $n] != "num") || ([:typeof $s] != "num")) do={ :return 0; };
+                :if (($h < 0) || ($h > 23) || ($n < 0) || ($n > 59) || ($s < 0) || ($s > 59)) do={ :return 0; };
+                :local localSeconds (($days * 86400) + ($h * 3600) + ($n * 60) + $s);
+                :local offset [:tonum [/system clock get gmt-offset]];
+                :if ([:typeof $offset] != "num") do={ :return 0; };
+                :if (($offset >= 2147483648) && ($offset <= 4294967295)) do={ :set offset ($offset - 4294967296); };
+                :if (($offset < -50400) || ($offset > 50400)) do={ :return 0; };
+                :return ($localSeconds - $offset);
             };
             :local ahora [$gmtkUtc];
         ROS;

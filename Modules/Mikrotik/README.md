@@ -36,7 +36,9 @@ Las claves API y de las fichas se cifran con `APP_KEY`. Respalde y conserve esa 
 
 ## Compatibilidad con RouterOS 6.49.23
 
-La lectura de hora usa `/system clock` y su `gmt-offset`, sin `:timestamp` ni `:tonsec`. Se admiten la fecha clásica `nov/03/2026` y la fecha ISO `2026-11-03`. El cálculo considera años bisiestos y convierte a UTC antes de comparar, por lo que conserva los vencimientos originales de las fichas. La preparación exige que el router ejecute el script y devuelva una hora UTC dentro de 90 segundos de la aplicación; si falla, no se habilitan nuevas fichas.
+La lectura de hora usa `/system clock` y su `gmt-offset`, sin `:timestamp` ni `:tonsec`. Se admiten la fecha clásica `nov/03/2026` y la fecha ISO `2026-11-03`. Aunque `clock print` muestra `-06:00`, `get gmt-offset` devuelve segundos. El script admite segundos con signo y segundos negativos representados como entero de 32 bits sin signo. Por ejemplo, el valor real observado `4294945696` se convierte a `-21600` segundos (UTC−06:00), restando `4294967296`. No es necesario cambiar la zona horaria ni el reloj por esta representación.
+
+El cálculo considera años bisiestos y convierte a UTC antes de comparar, por lo que conserva los vencimientos originales de las fichas. Los desplazamientos numéricos fuera de ±14 horas se rechazan. La preparación exige que el router ejecute el script y devuelva una hora UTC dentro de 90 segundos de la aplicación; si falla, no se habilitan nuevas fichas.
 
 Después de actualizar esta compatibilidad, abra **Configuración → Revisar preparación del Hotspot → Preparar y verificar Hotspot** para reinstalar el código de reloj. No hace falta una migración nueva ni actualizar el firmware. La API simulada cubre la aceptación de la versión y el flujo de emisión; el script debe verificarse en el equipo real antes de entregar fichas.
 
