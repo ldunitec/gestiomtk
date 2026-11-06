@@ -426,7 +426,7 @@ class MikrotikHotspotTest extends TestCase
             $u=collect($this->api->tablas['/ip/hotspot/user'])->firstWhere('name',$f->usuario);
             $this->assertSame($r->marcador().':P'.$dias,$u['comment']);
             $this->get(route('mt.imprimir',$l))->assertOk()->assertSee('Imprimir no activa ni reinicia el plazo')
-                ->assertSee('ficha-'.[1=>'dia',2=>'dos-dias',7=>'semana'][$dias],false)
+                ->assertSee('<article class="ficha ficha-'.[1=>'dia',2=>'dos-dias',7=>'semana'][$dias].'">',false)
                 ->assertSee('alt="MEGATK"',false)->assertSee('data:image/png;base64,',false);
             $this->assertNull($f->fresh()->activada_at);
         }
@@ -504,7 +504,7 @@ class MikrotikHotspotTest extends TestCase
         $this->assertSame($r->marcador().':E',$this->api->tablas['/ip/hotspot/user'][0]['comment']);
         $this->get(route('mt.empleados'))->assertOk()->assertSee($f->usuario)->assertSee('Sin vencimiento');
         $this->get(route('mt.fichas'))->assertOk()->assertDontSee($f->usuario);
-        $this->get(route('mt.imprimir',$f->lote))->assertOk()->assertSee('Internet para empleados')->assertSee('Sin vencimiento')->assertSee('ficha-empleado',false)->assertSee('SIN VENCIMIENTO');
+        $this->get(route('mt.imprimir',$f->lote))->assertOk()->assertSee('Internet para empleados')->assertSee('Sin vencimiento')->assertSee('<article class="ficha ficha-empleado">',false)->assertSee('SIN VENCIMIENTO');
         $d['solicitud_uuid']=(string) Str::uuid(); $d['dias']=0;
         $this->postJson(route('mt.crear'),$d)->assertUnprocessable();
         $d['visitante']=''; $this->postJson(route('mt.empleados.crear'),$d)->assertUnprocessable();
