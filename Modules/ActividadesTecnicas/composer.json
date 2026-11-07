@@ -1,0 +1,10 @@
+{
+    "name": "megatk/actividades-tecnicas",
+    "description": "Actividades técnicas para gestiomtk (Laravel 10 y nwidart 10)",
+    "type": "laravel-module",
+    "autoload": {
+        "psr-4": {
+            "Modules\\ActividadesTecnicas\\": ""
+        }
+    }
+}

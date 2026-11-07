@@ -1,0 +1,11 @@
+{
+  "name": "ActividadesTecnicas",
+  "alias": "actividades-tecnicas",
+  "description": "Control de órdenes y actividades de técnicos instaladores",
+  "keywords": ["MEGATK", "técnicos", "instalaciones", "órdenes de trabajo"],
+  "priority": 0,
+  "providers": [
+    "Modules\\ActividadesTecnicas\\Providers\\ActividadesTecnicasServiceProvider"
+  ],
+  "files": []
+}
