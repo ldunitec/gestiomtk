@@ -764,7 +764,7 @@
                     if (record.orden_url) el('view-technical-order').href = record.orden_url;
                 }
                 if (el('create-technical-order')) el('create-technical-order').classList.toggle('d-none', Boolean(record.orden_url));
-                el('edit-event-title').maxLength = record.orden_url ? 180 : 255;
+                el('edit-event-title').maxLength = 255;
                 el('edit-event-id').value = record.id;
                 el('edit-event-title').value = record.titulo || '';
                 el('edit-event-contacto').value = record.contacto || '';
@@ -1126,4 +1126,5 @@ document.getElementById('btnVerificarTodoist')
     });
 </script>
 @endsection
+
 

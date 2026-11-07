@@ -251,7 +251,7 @@ class ActividadesTecnicasTest extends TestCase
         $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>'No autorizado'])->assertForbidden();
         $this->postJson(route('actividades-tecnicas.ordenes.desde-agenda',$agenda))->assertForbidden();
         $this->assertSame('Orden de prueba',$agenda->fresh()->titulo);
-        $legacy=\Modules\Produccion\Entities\Agenda::create(['titulo'=>'Independiente','usuario_id'=>$lector->id,'estado'=>1]);
+        $legacy=new \Modules\Produccion\Entities\Agenda(['titulo'=>'Independiente','usuario_id'=>$lector->id,'estado'=>1]); $legacy->saveQuietly();
         $this->postJson(route('produccion.admin.agendas.updateDateItem',$legacy),['title'=>'Actividad común'])->assertOk();
         $this->assertSame(1,WorkOrder::count());
     }
@@ -259,7 +259,7 @@ class ActividadesTecnicasTest extends TestCase
     public function test_titulo_largo_revierte_ambos_registros_y_las_fechas_vacias_se_sincronizan(): void
     {
         $u=$this->login(); $order=$this->order($u); $agenda=$order->agenda;
-        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>str_repeat('a',181)])->assertUnprocessable();
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>str_repeat('a',256)])->assertUnprocessable();
         $this->assertSame('Orden de prueba',$agenda->fresh()->titulo); $this->assertSame('Orden de prueba',$order->fresh()->title);
         $agenda->update(['fecha_inicio'=>'2026-11-13']); $this->assertSame('13/11/2026 00:00',$order->fresh()->scheduledLocal());
         $agenda->update(['fecha_inicio'=>null]); $this->assertNull($order->fresh()->scheduled_at);
@@ -290,6 +290,97 @@ class ActividadesTecnicasTest extends TestCase
         $this->assertNotNull($order->fresh()->agenda_id); $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
     }
 
+    public function test_nueva_actividad_manual_genera_orden_sin_conversion_ni_llamadas_http(): void
+    {
+        $u=$this->login(); \Illuminate\Support\Facades\Http::fake();
+        $this->postJson(route('produccion.admin.agendas.store'),['title'=>'Nueva desde agenda','tipo'=>'Taller','assigned_user_id'=>'10128774',
+            'contacto'=>'Ana','telefono'=>'9999-1111','servicio'=>'Instalar lector'])->assertOk()->assertJson(['success'=>true]);
+        $agenda=\Modules\Produccion\Entities\Agenda::firstOrFail(); $order=WorkOrder::firstOrFail();
+        $this->assertSame($agenda->id,(int)$order->agenda_id); $this->assertSame('Nueva desde agenda',$order->title);
+        $this->assertSame('Instalar lector',$order->description); $this->assertSame($u->id,(int)$order->created_by);
+        $this->assertNull($order->scheduled_at); $this->assertSame('new',$order->status);
+        $this->assertSame(10128774,(int)$agenda->assigned_user_id); $this->assertSame('Ana',$agenda->contacto);
+        $this->assertSame(1,$order->statusHistory()->count()); $this->assertSame(1,TechnicalAuditLog::count());
+        $this->postJson(route('actividades-tecnicas.ordenes.desde-agenda',$agenda))->assertOk();
+        $this->assertSame(1,WorkOrder::count()); $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_excel_real_crea_orden_por_fila_y_reimportar_no_duplica(): void
+    {
+        $this->login(); \Illuminate\Support\Facades\Http::fake(); config(['services.todoist.users.cl'=>10128774]);
+        $book=new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $book->getActiveSheet()->fromArray([
+            ['secuencia_id_del_ticket','cliente','asunto','asignada_a'],
+            ['T-001','Cliente Uno','Instalar equipo','Celvyn Lozano'],
+            ['T-002','Cliente Dos','Revisión',''],
+            ['T-001','Duplicado','No importar',''],
+            ['', 'Sin ticket','No importar',''],
+        ]);
+        $file=tempnam(sys_get_temp_dir(),'act-excel-');
+        try {
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($file);
+            for ($i=0;$i<2;$i++) {
+                $upload=new \Illuminate\Http\UploadedFile($file,'actividades.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',null,true);
+                $this->postJson(route('produccion.admin.agenda.import'),['file'=>$upload])->assertOk()->assertJson(['success'=>true]);
+            }
+        } finally { @unlink($file); $book->disconnectWorksheets(); }
+        $this->assertSame(2,WorkOrder::count()); $this->assertSame(2,\Modules\Produccion\Entities\Agenda::count());
+        $agenda=\Modules\Produccion\Entities\Agenda::where('secuencia_ticket','T-001')->firstOrFail();
+        $this->assertSame('Cliente Uno',$agenda->ordenTecnica->title); $this->assertSame('Instalar equipo',$agenda->ordenTecnica->description);
+        $this->assertSame(10128774,(int)$agenda->assigned_user_id); $this->assertNull($agenda->ordenTecnica->scheduled_at);
+        $this->assertSame(2,WorkOrderStatusHistory::count()); \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_fallo_de_historial_revierte_nueva_actividad_y_orden(): void
+    {
+        $u=$this->login(); WorkOrderStatusHistory::creating(function () { throw new \RuntimeException('Historial no disponible'); });
+        try {
+            \Modules\Produccion\Entities\Agenda::create(['titulo'=>'Revertir','usuario_id'=>$u->id,'estado'=>1]);
+            $this->fail('Debió fallar.');
+        } catch (\RuntimeException $e) { $this->assertSame('Historial no disponible',$e->getMessage()); }
+        finally { WorkOrderStatusHistory::flushEventListeners(); }
+        $this->assertSame(0,WorkOrder::count()); $this->assertSame(0,\Modules\Produccion\Entities\Agenda::count());
+        $this->assertSame(0,TechnicalAuditLog::count());
+    }
+
+    public function test_fila_invalida_revierte_importacion_completa(): void
+    {
+        $this->login();
+        $rows=collect([collect(['secuencia_id_del_ticket'=>'R-001','cliente'=>'Válido']),
+            collect(['secuencia_id_del_ticket'=>'R-002','cliente'=>str_repeat('x',256)])]);
+        try { (new \Modules\Produccion\Imports\AgendaImport)->collection($rows); $this->fail('Debió validar.'); }
+        catch (\Illuminate\Validation\ValidationException $e) { $this->assertArrayHasKey('title',$e->errors()); }
+        $this->assertSame(0,WorkOrder::count()); $this->assertSame(0,\Modules\Produccion\Entities\Agenda::count());
+    }
+
+    public function test_titulo_de_255_se_conserva_y_orden_creada_directamente_no_genera_ciclo(): void
+    {
+        $this->login();
+        if (DB::getDriverName() === 'mysql') { DB::statement('ALTER TABLE at_work_orders MODIFY title VARCHAR(180) NOT NULL'); }
+        (require base_path('Modules/ActividadesTecnicas/Database/Migrations/2026_11_07_000002_expand_work_order_titles.php'))->up();
+        $title=str_repeat('á',255);
+        $this->postJson(route('produccion.admin.agendas.store'),['title'=>$title])->assertOk();
+        $this->assertSame($title,WorkOrder::firstOrFail()->title);
+        $this->post(route('actividades-tecnicas.ordenes.store'),$this->data())->assertRedirect();
+        $this->assertSame(2,WorkOrder::count()); $this->assertSame(2,\Modules\Produccion\Entities\Agenda::count());
+        $this->assertSame(2,WorkOrderStatusHistory::count());
+    }
+
+    public function test_reimportar_ticket_anterior_crea_orden_faltante_y_no_cambia_la_actividad(): void
+    {
+        $u=$this->login(); $agenda=new \Modules\Produccion\Entities\Agenda(['titulo'=>'Actividad anterior','usuario_id'=>$u->id,'estado'=>1,
+            'secuencia_ticket'=>'ANT-001','contacto'=>'Ana','servicio'=>'Servicio anterior','todoist_task_id'=>'task-anterior']);
+        $agenda->saveQuietly();
+        $rows=collect([collect(['secuencia_id_del_ticket'=>'ANT-001','cliente'=>'No reemplazar','asunto'=>'No reemplazar'])]);
+        (new \Modules\Produccion\Imports\AgendaImport)->collection($rows);
+        (new \Modules\Produccion\Imports\AgendaImport)->collection($rows);
+        $this->assertSame(1,WorkOrder::count()); $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
+        $this->assertSame('Actividad anterior',WorkOrder::firstOrFail()->title);
+        $this->assertSame('Servicio anterior',WorkOrder::firstOrFail()->description);
+        $this->assertSame('task-anterior',$agenda->fresh()->todoist_task_id); $this->assertSame('Ana',$agenda->fresh()->contacto);
+    }
+
     public function test_health_sanctum_con_permiso_y_rutas_sin_duplicar_prefijo(): void
     {
         $u=$this->login(); Sanctum::actingAs($u,['*']);
@@ -297,4 +388,5 @@ class ActividadesTecnicasTest extends TestCase
         $this->assertSame('/admin/actividades-tecnicas/ordenes',parse_url(route('actividades-tecnicas.ordenes.index'),PHP_URL_PATH));
     }
 }
+
 

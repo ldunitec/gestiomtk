@@ -39,7 +39,7 @@ class AgendaIntegration
         if (Auth::check()) { Gate::authorize('actividades-tecnicas.gestionar'); }
         if ($order->status === 'approved' && (int)$agenda->estado !== 2) { throw ValidationException::withMessages(['estado'=>'Una orden aprobada no se puede reabrir desde la agenda.']); }
         if ($order->status === 'cancelled') { throw ValidationException::withMessages(['estado'=>'La orden técnica está cancelada y no se puede reabrir desde la agenda.']); }
-        if (mb_strlen($agenda->titulo) > 180) { throw ValidationException::withMessages(['title'=>'Las órdenes técnicas admiten títulos de hasta 180 caracteres.']); }
+        if (mb_strlen($agenda->titulo) > 255) { throw ValidationException::withMessages(['title'=>'Las órdenes técnicas admiten títulos de hasta 255 caracteres.']); }
         $old = $order->only(['title','scheduled_at','status']);
         $order->title = $agenda->titulo;
         if ($agenda->wasChanged('fecha_inicio')) {
@@ -76,10 +76,11 @@ class AgendaIntegration
             $agenda = Agenda::whereKey($agenda->id)->lockForUpdate()->firstOrFail();
             $order = WorkOrder::where('agenda_id', $agenda->id)->first();
             if ($order) { return $order; }
-            if (mb_strlen($agenda->titulo) > 180) { throw ValidationException::withMessages(['title'=>'Reduzca el título de la actividad a 180 caracteres para convertirla en orden técnica.']); }
+            if (mb_strlen($agenda->titulo) > 255) { throw ValidationException::withMessages(['title'=>'Reduzca el título de la actividad a 255 caracteres para convertirla en orden técnica.']); }
             $order = app(WorkOrderService::class)->create(['title'=>$agenda->titulo,'description'=>$agenda->servicio,
                 'priority'=>'normal','scheduled_at'=>$this->schedule($agenda)], $actor, $agenda);
             return $order;
         }, 3);
     }
 }
+

@@ -5,7 +5,7 @@
 <div class="card"><div class="card-body">
 <form method="POST" action="{{ route('actividades-tecnicas.ordenes.store') }}">
     @csrf
-    <div class="form-group"><label for="title">Descripción breve *</label><input id="title" name="title" class="form-control" required maxlength="180" value="{{ old('title') }}"></div>
+    <div class="form-group"><label for="title">Descripción breve *</label><input id="title" name="title" class="form-control" required maxlength="255" value="{{ old('title') }}"></div>
     <div class="form-group"><label for="description">Descripción del trabajo</label><textarea id="description" maxlength="10000" name="description" class="form-control" rows="4">{{ old('description') }}</textarea></div>
     <div class="form-group"><label for="priority">Prioridad *</label>
         <select id="priority" name="priority" class="form-control" required>
@@ -29,4 +29,5 @@
 </form>
 </div></div>
 @stop
+
 

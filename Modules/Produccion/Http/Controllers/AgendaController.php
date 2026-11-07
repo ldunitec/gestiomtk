@@ -109,6 +109,8 @@ class AgendaController extends Controller
         try {
             Excel::import(new AgendaImport, $request->file('file'));
             return response()->json(['success' => true, 'message' => 'Registros importados correctamente.']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Error al importar agenda.', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'No se pudo importar el archivo. Revisa el registro del servidor.'], 500);
@@ -730,4 +732,5 @@ $luisId = $users['8503605'];
     }
 }
 }
+
 

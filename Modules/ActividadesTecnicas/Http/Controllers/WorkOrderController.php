@@ -15,7 +15,7 @@ class WorkOrderController extends Controller
 
     private function data(Request $request): array
     {
-        $data = $request->validate(['title'=>'required|string|max:180','description'=>'nullable|string|max:10000',
+        $data = $request->validate(['title'=>'required|string|max:255','description'=>'nullable|string|max:10000',
             'priority'=>'required|in:low,normal,high,urgent','scheduled_at'=>'nullable|date_format:Y-m-d\TH:i',
             'agenda_tipo'=>'sometimes|in:Interno,Taller,Visita,Llamada',
             'agenda_responsable'=>['sometimes','nullable',\Illuminate\Validation\Rule::in(array_merge(array_keys(\Modules\Produccion\Http\Controllers\AgendaController::responsablesOrden()), ['todos']))]]);
@@ -82,4 +82,5 @@ class WorkOrderController extends Controller
         return $this->responseOrder($workOrder->fresh(), 'Orden cancelada y retirada de la agenda activa. Se conserva su historial.');
     }
 }
+
 

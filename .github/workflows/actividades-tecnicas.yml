@@ -5,6 +5,7 @@ on:
     paths:
       - 'Modules/ActividadesTecnicas/**'
       - 'Modules/Produccion/Entities/Agenda.php'
+      - 'Modules/Produccion/Imports/AgendaImport.php'
       - 'Modules/Produccion/Http/Controllers/AgendaController.php'
       - 'Modules/Produccion/Resources/views/admin/agendas/index.blade.php'
       - 'modules_statuses.json'
@@ -67,3 +68,4 @@ jobs:
         run: find Modules/ActividadesTecnicas -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Probar integración, permisos, órdenes, historial y migraciones
         run: vendor/bin/phpunit tests/Feature/ActividadesTecnicasTest.php
+
