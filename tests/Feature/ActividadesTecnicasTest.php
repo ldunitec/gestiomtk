@@ -26,7 +26,9 @@ class ActividadesTecnicasTest extends TestCase
         DB::purge($connection);
         $migrations = glob(base_path('Modules/ActividadesTecnicas/Database/Migrations/*.php'));
         foreach (array_reverse($migrations) as $file) { (require $file)->down(); }
-        (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->down();
+        if (Schema::hasTable('role_has_permissions')) {
+            (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->down();
+        }
         (require database_path('migrations/2014_10_12_000000_create_users_table.php'))->down();
         (require database_path('migrations/2014_10_12_000000_create_users_table.php'))->up();
         (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->up();
