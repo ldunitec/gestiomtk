@@ -109,7 +109,7 @@ class AgendaController extends Controller
         try {
             Excel::import(new AgendaImport, $request->file('file'));
             return response()->json(['success' => true, 'message' => 'Registros importados correctamente.']);
-        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error('Error al importar agenda.', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'No se pudo importar el archivo. Revisa el registro del servidor.'], 500);
         }
@@ -190,7 +190,7 @@ class AgendaController extends Controller
     //                 ? $data['assigned_user_id'] : $event->assigned_user_id),
     //             'estado' => $data['estado'] ?? $event->estado,
     //         ]);
-    //     } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+    //     } catch (\Throwable $e) {
     //         Log::error('No se pudo guardar la actividad.', ['agenda_id' => $event->id, 'error' => $e->getMessage()]);
     //         return response()->json(['success' => false, 'message' => 'No se pudo guardar la actividad.'], 500);
     //     }
@@ -371,7 +371,7 @@ class AgendaController extends Controller
                     foreach ($ids as $taskId) {
                         try {
                             $this->verificarRespuesta($service->completeTask($taskId), 'No se pudo completar la tarea ' . $taskId);
-                        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+                        } catch (\Throwable $e) {
                             $errors[] = $e->getMessage();
                         }
                     }
@@ -489,7 +489,7 @@ $luisId = $users['8503605'];
                             // Conservar cada éxito parcial para el próximo intento.
                             $this->guardarIdsAgendaTodoist($event, $ids);
                         }
-                    } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+                    } catch (\Throwable $e) {
                         Log::warning('Todoist: destinatario pendiente.', ['agenda_id' => $event->id, 'destinatario' => $name, 'error' => $e->getMessage()]);
                         $errors[] = $e->getMessage();
                         // Si falló la persistencia tras crear, detener para no crear más copias sin guardar.
@@ -504,14 +504,14 @@ $luisId = $users['8503605'];
                             $this->verificarRespuesta($service->completeTask($taskId), 'No se pudo archivar la copia ' . $taskId);
                             $ids = array_values(array_filter($ids, fn($id) => (string) $id !== (string) $taskId));
                             $this->guardarIdsAgendaTodoist($event, $ids);
-                        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+                        } catch (\Throwable $e) {
                             $errors[] = $e->getMessage();
                         }
                     }
                 }
                 return ['success' => empty($errors), 'action' => 'sincronizar', 'errors' => $errors];
             });
-        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error('Todoist: sincronización incompleta.', ['agenda_id' => $event->id, 'error' => $e->getMessage()]);
             return ['success' => false, 'action' => 'error', 'errors' => [$e->getMessage()]];
         }
