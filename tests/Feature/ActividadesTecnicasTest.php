@@ -18,7 +18,7 @@ class ActividadesTecnicasTest extends TestCase
     {
         parent::setUp();
         $connection = getenv('ACT_TEST_DB') === 'mysql' ? 'mysql' : 'sqlite';
-        config(['app.timezone'=>'America/Tegucigalpa','database.default'=>$connection,
+        config(['services.todoist.token'=>null, 'services.todoist.project_id'=>null, 'app.timezone'=>'America/Tegucigalpa','database.default'=>$connection,
             'database.connections.sqlite.database'=>':memory:', 'database.connections.sqlite.foreign_key_constraints'=>true,
             'database.connections.mysql.host'=>'127.0.0.1','database.connections.mysql.port'=>3306,
             'database.connections.mysql.database'=>'actividades_test','database.connections.mysql.username'=>'root',
@@ -29,9 +29,11 @@ class ActividadesTecnicasTest extends TestCase
         if (Schema::hasTable('role_has_permissions')) {
             (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->down();
         }
+        Schema::dropIfExists('agendas');
         (require database_path('migrations/2014_10_12_000000_create_users_table.php'))->down();
         (require database_path('migrations/2014_10_12_000000_create_users_table.php'))->up();
         (require database_path('migrations/2025_03_16_105935_create_permission_tables.php'))->up();
+        (require database_path('migrations/2025_08_23_084717_create_agendas_table.php'))->up();
         foreach ($migrations as $file) { (require $file)->up(); }
         Carbon::setTestNow(Carbon::parse('2026-11-07 18:00:00', 'UTC'));
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-07 18:00:00', 'UTC'));
@@ -188,6 +190,106 @@ class ActividadesTecnicasTest extends TestCase
         $this->assertCount(13,$tables); $this->assertFalse(Schema::hasTable('work_orders'));
     }
 
+    public function test_orden_crea_una_actividad_y_editar_conserva_metadatos_y_todoist(): void
+    {
+        $this->login(); $this->post(route('actividades-tecnicas.ordenes.store'),$this->data(['agenda_tipo'=>'Taller','agenda_responsable'=>'10128774']))->assertRedirect();
+        $order=WorkOrder::firstOrFail(); $agenda=$order->agenda;
+        $this->assertSame('2026-11-09',substr($agenda->fecha_inicio,0,10));
+        $this->assertSame('Taller',$agenda->tipo); $this->assertSame('10128774',(string)$agenda->assigned_user_id);
+        $agenda->update(['todoist_task_id'=>'task-existente','contacto'=>'Contacto original','telefono'=>'9999-0000']);
+        $this->put(route('actividades-tecnicas.ordenes.update',$order),$this->data(['title'=>'Título actualizado','scheduled_at'=>'2026-11-10T09:30','agenda_tipo'=>'Visita','agenda_responsable'=>'todos']))->assertRedirect();
+        $agenda->refresh(); $this->assertSame('Título actualizado',$agenda->titulo);
+        $this->assertSame('2026-11-10',substr($agenda->fecha_inicio,0,10)); $this->assertNull($agenda->assigned_user_id);
+        $this->assertSame('task-existente',$agenda->todoist_task_id); $this->assertSame('Contacto original',$agenda->contacto);
+        $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
+        $this->get(route('actividades-tecnicas.ordenes.show',$order))->assertOk()->assertSee('Ver en agenda');
+    }
+
+    public function test_convertir_actividad_existente_no_duplica_y_conserva_asignacion(): void
+    {
+        $u=$this->login();
+        $agenda=\Modules\Produccion\Entities\Agenda::create(['titulo'=>'Actividad anterior','usuario_id'=>$u->id,'tipo'=>'Visita',
+            'fecha_inicio'=>null,'estado'=>1,'servicio'=>'Instalar equipo','contacto'=>'Ana','telefono'=>'9999-1111',
+            'assigned_user_id'=>49411725,'todoist_task_id'=>'task-123']);
+        $url=route('actividades-tecnicas.ordenes.desde-agenda',$agenda);
+        $this->postJson($url)->assertOk()->assertJson(['success'=>true]); $this->postJson($url)->assertOk();
+        $this->assertSame(1,WorkOrder::count()); $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
+        $order=WorkOrder::firstOrFail(); $this->assertSame($agenda->id,(int)$order->agenda_id);
+        $this->assertSame('Instalar equipo',$order->description); $this->assertNull($order->scheduled_at);
+        $agenda->refresh(); $this->assertSame(49411725,(int)$agenda->assigned_user_id); $this->assertSame('task-123',$agenda->todoist_task_id);
+        $this->assertSame('Ana',$agenda->contacto); $this->assertSame(1,$order->statusHistory()->count());
+    }
+
+    public function test_agenda_mueve_orden_y_conserva_hora_luego_completa_y_reabre_con_historial(): void
+    {
+        $this->login(); $this->post(route('actividades-tecnicas.ordenes.store'),$this->data())->assertRedirect();
+        $order=WorkOrder::firstOrFail(); $agenda=$order->agenda;
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>'Desde agenda','start'=>'2026-11-12','estado'=>1])->assertOk()->assertJson(['success'=>true]);
+        $order->refresh(); $this->assertSame('Desde agenda',$order->title); $this->assertSame('12/11/2026 08:30',$order->scheduledLocal());
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['estado'=>2])->assertOk();
+        $order->refresh(); $this->assertSame('completed',$order->status); $this->assertNotNull($order->closed_at);
+        $this->assertSame(2,$order->statusHistory()->count());
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['estado'=>1])->assertOk();
+        $order->refresh(); $this->assertSame('new',$order->status); $this->assertNull($order->closed_at);
+        $this->assertSame(3,$order->statusHistory()->count());
+        $this->assertTrue(TechnicalAuditLog::where('action','sincronizar_agenda')->exists());
+    }
+
+    public function test_cancelacion_retira_actividad_y_no_admite_reapertura_desde_agenda(): void
+    {
+        $u=$this->login(); $order=$this->order($u); $agenda=$order->agenda;
+        $this->delete(route('actividades-tecnicas.ordenes.destroy',$order),['confirmar'=>1])->assertRedirect();
+        $this->assertSame(2,(int)$agenda->fresh()->estado); $this->assertSame('cancelled',$order->fresh()->status);
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['estado'=>1])->assertUnprocessable();
+        $this->assertSame(2,(int)$agenda->fresh()->estado); $this->assertSame('cancelled',$order->fresh()->status);
+    }
+
+    public function test_permisos_link_y_agenda_independiente(): void
+    {
+        $admin=$this->login(); $order=$this->order($admin); $agenda=$order->agenda;
+        $lector=$this->login(false); $lector->givePermissionTo('actividades-tecnicas.ver');
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>'No autorizado'])->assertForbidden();
+        $this->postJson(route('actividades-tecnicas.ordenes.desde-agenda',$agenda))->assertForbidden();
+        $this->assertSame('Orden de prueba',$agenda->fresh()->titulo);
+        $legacy=\Modules\Produccion\Entities\Agenda::create(['titulo'=>'Independiente','usuario_id'=>$lector->id,'estado'=>1]);
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$legacy),['title'=>'Actividad común'])->assertOk();
+        $this->assertSame(1,WorkOrder::count());
+    }
+
+    public function test_titulo_largo_revierte_ambos_registros_y_las_fechas_vacias_se_sincronizan(): void
+    {
+        $u=$this->login(); $order=$this->order($u); $agenda=$order->agenda;
+        $this->postJson(route('produccion.admin.agendas.updateDateItem',$agenda),['title'=>str_repeat('a',181)])->assertUnprocessable();
+        $this->assertSame('Orden de prueba',$agenda->fresh()->titulo); $this->assertSame('Orden de prueba',$order->fresh()->title);
+        $agenda->update(['fecha_inicio'=>'2026-11-13']); $this->assertSame('13/11/2026 00:00',$order->fresh()->scheduledLocal());
+        $agenda->update(['fecha_inicio'=>null]); $this->assertNull($order->fresh()->scheduled_at);
+    }
+
+    public function test_conversion_de_completada_no_reabre_ni_modifica_todoist(): void
+    {
+        $u=$this->login(); $agenda=\Modules\Produccion\Entities\Agenda::create(['titulo'=>'Ya completada','usuario_id'=>$u->id,'estado'=>2,'fecha_inicio'=>'2026-11-02','todoist_task_id'=>'historica']);
+        $this->post(route('actividades-tecnicas.ordenes.desde-agenda',$agenda))->assertRedirect();
+        $order=WorkOrder::firstOrFail(); $this->assertSame('completed',$order->status);
+        $this->assertSame('completed',$order->statusHistory()->first()->to_status); $this->assertSame('historica',$agenda->fresh()->todoist_task_id);
+    }
+
+    public function test_calendario_publica_enlace_y_pantalla_permite_convertir(): void
+    {
+        $this->login(); $this->post(route('actividades-tecnicas.ordenes.store'),$this->data())->assertRedirect();
+        $order=WorkOrder::firstOrFail();
+        $this->getJson(route('produccion.admin.agendas.getEvents'))->assertOk()->assertJsonFragment(['orden_url'=>route('actividades-tecnicas.ordenes.show',$order)]);
+        $this->get(route('produccion.admin.agendas.index'))->assertOk()->assertSee('Órdenes técnicas')->assertSee('Convertir actividad en orden técnica');
+    }
+
+    public function test_comando_integra_ordenes_previas_de_forma_idempotente(): void
+    {
+        $u=$this->login(); $order=$this->order($u); $old=$order->agenda;
+        $order->forceFill(['agenda_id'=>null])->save(); $old->delete();
+        $this->artisan('actividades-tecnicas:integrar-agenda')->assertSuccessful();
+        $this->artisan('actividades-tecnicas:integrar-agenda')->assertSuccessful();
+        $this->assertNotNull($order->fresh()->agenda_id); $this->assertSame(1,\Modules\Produccion\Entities\Agenda::count());
+    }
+
     public function test_health_sanctum_con_permiso_y_rutas_sin_duplicar_prefijo(): void
     {
         $u=$this->login(); Sanctum::actingAs($u,['*']);
@@ -195,3 +297,4 @@ class ActividadesTecnicasTest extends TestCase
         $this->assertSame('/admin/actividades-tecnicas/ordenes',parse_url(route('actividades-tecnicas.ordenes.index'),PHP_URL_PATH));
     }
 }
+

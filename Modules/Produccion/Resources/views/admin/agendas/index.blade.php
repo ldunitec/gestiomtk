@@ -6,7 +6,9 @@
             <h1 class="m-0">Agenda semanal</h1>
             <p class="text-muted mb-0 mt-1">Organiza las actividades y da seguimiento al trabajo de tu equipo.</p>
         </div>
-        <div class="agenda-actions"><button type="button" class="btn btn-outline-success" data-toggle="modal"
+        <div class="agenda-actions">
+            @can('actividades-tecnicas.ver')<a class="btn btn-outline-primary" href="{{ route('actividades-tecnicas.ordenes.index') }}">Órdenes técnicas</a>@endcan
+            <button type="button" class="btn btn-outline-success" data-toggle="modal"
                 data-target="#importExcelModal"><i class="fas fa-file-excel mr-2" aria-hidden="true"></i>Importar
                 Excel</button>
 
@@ -105,6 +107,7 @@
                                 style="border-left-color: {{ $evento->color ?? '#6c757d' }};" data-id="{{ $evento->id }}"
                                 data-titulo="{{ $evento->titulo }}" data-tipo="{{ $evento->tipo ?? 'Llamada' }}"
                                 data-estado="{{ $evento->estado }}"
+                                data-orden-url="{{ $evento->relationLoaded('ordenTecnica') && $evento->ordenTecnica && auth()->user()->can('actividades-tecnicas.ver') ? route('actividades-tecnicas.ordenes.show', $evento->ordenTecnica) : '' }}"
                                 data-assigned-user-id="{{ $evento->assigned_user_id }}"
                                 data-contacto="{{ $evento->contacto }}" data-telefono="{{ $evento->telefono }}"
                                 data-servicio="{{ $evento->servicio }}" data-ticket="{{ $evento->secuencia_ticket }}">
@@ -252,6 +255,10 @@
                             Los cambios se guardarán en «Sin agendar». Después arrastra la tarea al calendario para enviarla
                             a Todoist.
                         </div>
+                        @can('actividades-tecnicas.ver')
+                        <div class="mb-3"><a id="view-technical-order" class="btn btn-outline-primary d-none">Abrir orden técnica</a>
+                        @can('actividades-tecnicas.gestionar')<button type="button" id="create-technical-order" class="btn btn-outline-primary">Convertir actividad en orden técnica</button>@endcan</div>
+                        @endcan
                         <div id="edit-event-error" class="alert alert-danger d-none" role="alert"></div>
                         <div class="form-group">
                             <label for="edit-event-title">Título <span class="text-danger">*</span></label>
@@ -633,6 +640,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const el = id => document.getElementById(id);
             const token = document.querySelector('meta[name="csrf-token"]').content;
+            const technicalOrderUrl = "{{ route('actividades-tecnicas.ordenes.desde-agenda', ['agenda'=>':id']) }}";
             const urlStore = "{{ route('produccion.admin.agendas.store') }}";
             const updateDateUrl = "{{ route('produccion.admin.agendas.updateDate', ['event' => ':id']) }}";
             const updateDateItem = "{{ route('produccion.admin.agendas.updateDateItem', ['event' => ':id']) }}";
@@ -751,6 +759,12 @@
                     pending: Boolean(card),
                     date: (record.fecha_inicio || '').slice(0, 10)
                 };
+                if (el('view-technical-order')) {
+                    el('view-technical-order').classList.toggle('d-none', !record.orden_url);
+                    if (record.orden_url) el('view-technical-order').href = record.orden_url;
+                }
+                if (el('create-technical-order')) el('create-technical-order').classList.toggle('d-none', Boolean(record.orden_url));
+                el('edit-event-title').maxLength = record.orden_url ? 180 : 255;
                 el('edit-event-id').value = record.id;
                 el('edit-event-title').value = record.titulo || '';
                 el('edit-event-contacto').value = record.contacto || '';
@@ -782,6 +796,7 @@
                 if (!card) return;
                 event.preventDefault();
                 openEditor({
+                    orden_url: card.dataset.ordenUrl,
                     id: card.dataset.id,
                     titulo: card.dataset.titulo,
                     tipo: card.dataset.tipo,
@@ -797,6 +812,7 @@
                 if (!button) return;
                 const card = button.closest('.external-event');
                 openEditor({
+                    orden_url: card.dataset.ordenUrl,
                     id: card.dataset.id,
                     titulo: card.dataset.titulo,
                     tipo: card.dataset.tipo,
@@ -904,13 +920,27 @@
                 }
             });
             calendar.render();
+            const requestedActivity = new URLSearchParams(window.location.search).get('actividad');
+            if (requestedActivity && /^\d+$/.test(requestedActivity)) {
+                const activity = calendar.getEventById(requestedActivity);
+                if (activity) openEditor({...activity.extendedProps, id: activity.id, titulo: activity.title, fecha_inicio: activity.startStr});
+                else document.querySelector('.external-event[data-id="' + requestedActivity + '"] .edit-pending-btn')?.click();
+            }
+            el('create-technical-order')?.addEventListener('click', async function () {
+                if (!editor || savingEditor) return;
+                this.disabled = true;
+                try { const result = await post(routeFor(technicalOrderUrl, editor.id), {}); window.location.assign(result.url); }
+                catch (error) { showError(error.message); }
+                finally { this.disabled = false; }
+            });
             new FullCalendar.Draggable(el('external-events'), {
                 itemSelector: '.external-event:not(.is-saving) .agenda-drag-handle',
                 minDistance: 5,
                 eventData(handle) {
                     const card = handle.closest('.external-event');
                     return {
-                        id: card.dataset.id,
+                        orden_url: card.dataset.ordenUrl,
+                    id: card.dataset.id,
                         title: card.dataset.titulo,
                         color: card.style.borderLeftColor,
                         create: false,
@@ -1096,3 +1126,4 @@ document.getElementById('btnVerificarTodoist')
     });
 </script>
 @endsection
+

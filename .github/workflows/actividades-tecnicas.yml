@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'Modules/ActividadesTecnicas/**'
+      - 'Modules/Produccion/Entities/Agenda.php'
+      - 'Modules/Produccion/Http/Controllers/AgendaController.php'
+      - 'Modules/Produccion/Resources/views/admin/agendas/index.blade.php'
       - 'modules_statuses.json'
       - 'config/adminlte.php'
       - 'tests/Feature/ActividadesTecnicasTest.php'

@@ -33,6 +33,7 @@ class WorkOrder extends Modelo
         return $this->scheduled_at?->copy()->timezone(config('app.timezone', 'America/Tegucigalpa'))->format($format);
     }
 
+    public function agenda(): BelongsTo { return $this->belongsTo(\Modules\Produccion\Entities\Agenda::class, 'agenda_id'); }
     public function client(): BelongsTo { return $this->belongsTo(ServiceClient::class, 'client_id'); }
     public function location(): BelongsTo { return $this->belongsTo(ServiceLocation::class, 'location_id'); }
     public function serviceType(): BelongsTo { return $this->belongsTo(ServiceType::class, 'service_type_id'); }
@@ -45,3 +46,4 @@ class WorkOrder extends Modelo
     public function approvals(): HasMany { return $this->hasMany(WorkOrderApproval::class); }
     public function statusHistory(): HasMany { return $this->hasMany(WorkOrderStatusHistory::class); }
 }
+

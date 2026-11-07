@@ -54,3 +54,26 @@ El endpoint de diagnóstico `/api/v1/actividades-tecnicas/health` requiere Sanct
 5. Compruebe que Agenda, Gym y MikroTik conservan sus accesos.
 
 Para desinstalar en un entorno de prueba, haga rollback **solo del módulo y en orden inverso**; sus tablas contienen datos y no deben borrarse en producción. No use `migrate:fresh` para instalarlo.
+
+
+## Fusión con Agenda de Producción
+
+Después de actualizar el código, respalde la base y ejecute:
+
+```powershell
+php artisan migrate --path=Modules/ActividadesTecnicas/Database/Migrations/2026_11_07_000001_link_work_orders_to_agendas.php --force
+php artisan actividades-tecnicas:integrar-agenda
+php artisan optimize:clear
+```
+
+- Las órdenes nuevas crean una sola actividad en la agenda, con el mismo título y día. Sin fecha aparecen en «Sin agendar». El formulario permite elegir tipo y responsable de la agenda existente.
+- En la agenda, abra una actividad y pulse **Convertir actividad en orden técnica**. Se reutiliza esa actividad y se conservan sus contactos, asignación, proyecto e IDs de Todoist. Repetir la conversión abre la misma orden. Los títulos de órdenes técnicas admiten hasta 180 caracteres.
+- La agenda conserva sus responsables originales; esos identificadores no se convierten en usuarios locales ni en asignaciones técnicas ficticias.
+- Mover de día o cambiar el título en la agenda actualiza la orden. La hora de la orden se conserva al mover el día; la agenda existente trabaja por días. Completar/reabrir desde agenda cambia el estado de la orden y registra historial. Las órdenes canceladas o aprobadas no se reabren desde la agenda.
+- Cancelar una orden nueva retira su actividad de la agenda activa sin borrar historial. La descripción técnica completa permanece en la orden; el servicio/contactos de la actividad son sus propios datos y no se sobreescriben con la descripción al editar la orden.
+- Crear/editar/cancelar una orden usa el mismo flujo de Todoist de la agenda después de confirmar la transacción local. Un fallo remoto muestra aviso y conserva los cambios. Convertir una actividad o ejecutar el comando no crea tareas remotas adicionales. Cerrar una orden cancelada usa el cierre existente de Todoist.
+- El comando vincula las órdenes antiguas que aún no tienen agenda, sin duplicar las ya vinculadas. No intenta asociar actividades por títulos parecidos ni elimina actividades anteriores. Se puede ejecutar otra vez.
+- Las actividades independientes siguen funcionando sin crear órdenes automáticamente. Para editar una actividad vinculada se exige también `actividades-tecnicas.gestionar`; consultar la orden exige `actividades-tecnicas.ver`.
+- La migración añade una relación única `agenda_id` y completa únicamente las columnas opcionales de agenda ausentes en migraciones antiguas. Conserva los datos existentes. Para deshacer la relación use MariaDB; no retire columnas de compatibilidad de agenda que ya contienen datos.
+
+El resto del alcance del adjunto (capturas GPS, evidencias y asignaciones operativas) conserva las limitaciones indicadas arriba.
