@@ -529,6 +529,16 @@ return [
 
     ['header' => 'PRODUCCIÓN'],
     [
+        'text' => 'Actividades técnicas',
+        'icon' => 'fas fa-fw fa-clipboard-list',
+        'can' => 'actividades-tecnicas.ver',
+        'submenu' => [
+            ['text' => 'Tablero', 'route' => 'actividades-tecnicas.dashboard', 'icon' => 'fas fa-fw fa-chart-line'],
+            ['text' => 'Órdenes de trabajo', 'route' => 'actividades-tecnicas.ordenes.index', 'icon' => 'fas fa-fw fa-list'],
+            ['text' => 'Nueva orden', 'route' => 'actividades-tecnicas.ordenes.create', 'can' => 'actividades-tecnicas.gestionar', 'icon' => 'fas fa-fw fa-plus'],
+        ],
+    ],
+    [
         'text' => 'Viáticos',
         'icon' => 'fas fa-fw fa-wallet',
         'can' => 'admin.viaticos.index',
@@ -828,4 +838,5 @@ return [
 
     'livewire' => false,
 ];
+
 

@@ -1,0 +1,66 @@
+name: Validar modulo Actividades Tecnicas
+
+on:
+  pull_request:
+    paths:
+      - 'Modules/ActividadesTecnicas/**'
+      - 'modules_statuses.json'
+      - 'config/adminlte.php'
+      - 'tests/Feature/ActividadesTecnicasTest.php'
+      - '.github/workflows/actividades-tecnicas.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  actividades:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, mysql]
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: testing
+          MARIADB_DATABASE: actividades_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      ACT_TEST_DB: ${{ matrix.database }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            bootstrap
+            config
+            database
+            Modules
+            resources
+            routes
+            tests
+            storage
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, sockets, zip, pdo_sqlite, pdo_mysql
+          tools: composer:v2
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Validar sintaxis
+        run: find Modules/ActividadesTecnicas -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Probar integración, permisos, órdenes, historial y migraciones
+        run: vendor/bin/phpunit tests/Feature/ActividadesTecnicasTest.php
