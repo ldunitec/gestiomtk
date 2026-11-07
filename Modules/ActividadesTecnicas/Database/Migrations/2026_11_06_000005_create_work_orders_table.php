@@ -14,7 +14,7 @@ return new class extends Migration
     $table->foreignId('client_id')->nullable()->constrained('at_service_clients')->nullOnDelete();
     $table->foreignId('location_id')->nullable()->constrained('at_service_locations')->nullOnDelete();
     $table->foreignId('service_type_id')->nullable()->constrained('at_service_types')->nullOnDelete();
-    $table->string('title', 180);
+    $table->string('title', 255);
     $table->longText('description')->nullable();
     $table->enum('priority', ['low', 'normal', 'high', 'urgent'])->default('normal');
     $table->enum('status', ['new', 'assigned', 'accepted', 'en_route', 'in_progress', 'paused', 'completed', 'under_review', 'approved', 'not_completed', 'cancelled'])->default('new');
@@ -34,3 +34,4 @@ return new class extends Migration
         Schema::dropIfExists('at_work_orders');
     }
 };
+

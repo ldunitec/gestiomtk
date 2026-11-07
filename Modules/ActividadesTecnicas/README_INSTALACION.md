@@ -67,13 +67,32 @@ php artisan optimize:clear
 ```
 
 - Las órdenes nuevas crean una sola actividad en la agenda, con el mismo título y día. Sin fecha aparecen en «Sin agendar». El formulario permite elegir tipo y responsable de la agenda existente.
-- En la agenda, abra una actividad y pulse **Convertir actividad en orden técnica**. Se reutiliza esa actividad y se conservan sus contactos, asignación, proyecto e IDs de Todoist. Repetir la conversión abre la misma orden. Los títulos de órdenes técnicas admiten hasta 180 caracteres.
+- En la agenda, abra una actividad y pulse **Convertir actividad en orden técnica**. Se reutiliza esa actividad y se conservan sus contactos, asignación, proyecto e IDs de Todoist. Repetir la conversión abre la misma orden. Los títulos de órdenes técnicas admiten hasta 255 caracteres.
 - La agenda conserva sus responsables originales; esos identificadores no se convierten en usuarios locales ni en asignaciones técnicas ficticias.
 - Mover de día o cambiar el título en la agenda actualiza la orden. La hora de la orden se conserva al mover el día; la agenda existente trabaja por días. Completar/reabrir desde agenda cambia el estado de la orden y registra historial. Las órdenes canceladas o aprobadas no se reabren desde la agenda.
 - Cancelar una orden nueva retira su actividad de la agenda activa sin borrar historial. La descripción técnica completa permanece en la orden; el servicio/contactos de la actividad son sus propios datos y no se sobreescriben con la descripción al editar la orden.
 - Crear/editar/cancelar una orden usa el mismo flujo de Todoist de la agenda después de confirmar la transacción local. Un fallo remoto muestra aviso y conserva los cambios. Convertir una actividad o ejecutar el comando no crea tareas remotas adicionales. Cerrar una orden cancelada usa el cierre existente de Todoist.
 - El comando vincula las órdenes antiguas que aún no tienen agenda, sin duplicar las ya vinculadas. No intenta asociar actividades por títulos parecidos ni elimina actividades anteriores. Se puede ejecutar otra vez.
-- Las actividades independientes siguen funcionando sin crear órdenes automáticamente. Para editar una actividad vinculada se exige también `actividades-tecnicas.gestionar`; consultar la orden exige `actividades-tecnicas.ver`.
+- Las actividades anteriores sin vínculo siguen funcionando. Las nuevas generan su orden automáticamente. Para editar una actividad vinculada se exige también `actividades-tecnicas.gestionar`; consultar la orden exige `actividades-tecnicas.ver`.
 - La migración añade una relación única `agenda_id` y completa únicamente las columnas opcionales de agenda ausentes en migraciones antiguas. Conserva los datos existentes. Para deshacer la relación use MariaDB; no retire columnas de compatibilidad de agenda que ya contienen datos.
 
 El resto del alcance del adjunto (capturas GPS, evidencias y asignaciones operativas) conserva las limitaciones indicadas arriba.
+
+
+## Generación automática desde agenda y Excel
+
+Con esta actualización, **cada actividad nueva** de la agenda crea su orden técnica automáticamente, tanto desde el formulario como desde Excel. La relación única evita otra orden al pulsar Convertir de nuevo. Crear una orden técnica sigue generando una sola actividad; no se produce un ciclo entre ambas.
+
+Si la actividad se crea sin fecha, la orden también queda sin programar. Conserva responsable, contacto, teléfono, servicio, ticket e IDs Todoist en la misma actividad; la orden toma su título y descripción iniciales. El proceso automático no hace llamadas a Todoist ni cambia sus IDs. Al agendar o editar, se conserva el flujo de sincronización existente.
+
+La importación es transaccional: si falla alguna fila o la creación de su orden/historial, se revierte ese lote y se devuelve el error. Los tickets ya presentes no se duplican al reimportar: si su actividad antigua aún no tiene orden, se vincula una sin reemplazar sus datos. Las actividades y órdenes creadas desde la aplicación comparten el límite de título de 255 caracteres para conservar los nombres importados completos.
+
+Después de integrar y respaldar la base:
+
+```powershell
+git pull --ff-only origin main
+php artisan migrate --path=Modules/ActividadesTecnicas/Database/Migrations/2026_11_07_000002_expand_work_order_titles.php --force
+php artisan optimize:clear
+```
+
+Esta migración amplía el título en MariaDB/MySQL; no reduce ni trunca los textos al retroceder. Requiere haber aplicado la migración de vínculo con agenda del PR anterior. No convierte automáticamente las actividades antiguas independientes; puede usar su botón Convertir cuando corresponda.
