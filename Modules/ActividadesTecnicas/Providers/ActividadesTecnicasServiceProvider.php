@@ -9,6 +9,8 @@ class ActividadesTecnicasServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        \Modules\Produccion\Entities\Agenda::observe(\Modules\ActividadesTecnicas\Observers\AgendaObserver::class);
+        $this->commands([\Modules\ActividadesTecnicas\Console\IntegrarAgenda::class]);
         $root = dirname(__DIR__);
         $this->loadViewsFrom($root.'/Resources/views', 'actividades-tecnicas');
         $this->loadMigrationsFrom($root.'/Database/Migrations');
@@ -21,3 +23,4 @@ class ActividadesTecnicasServiceProvider extends ServiceProvider
         });
     }
 }
+

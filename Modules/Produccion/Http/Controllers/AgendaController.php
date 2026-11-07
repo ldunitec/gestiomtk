@@ -24,6 +24,22 @@ class AgendaController extends Controller
         '49411725' => 'Kevin Godoy',
     ];
 
+    public static function responsablesOrden(): array { return self::USUARIOS; }
+
+    private function integrarConsultaAgenda($query)
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('at_work_orders', 'agenda_id')) { $query->with('ordenTecnica'); }
+        return $query;
+    }
+
+    private function autorizarOrden(Agenda $event): void
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('at_work_orders', 'agenda_id')
+            && $event->ordenTecnica()->exists()) {
+            abort_unless(Auth::user()?->can('actividades-tecnicas.gestionar'), 403, 'Necesita permiso para gestionar la orden técnica vinculada.');
+        }
+    }
+
     private function reglasResponsable()
     {
         // Se admite el antiguo ID local de Luis para registros existentes.
@@ -57,6 +73,8 @@ class AgendaController extends Controller
             'end' => $event->fecha_fin,
             'color' => $event->color ?? $this->getColorByTipo($event->tipo),
             'extendedProps' => [
+                'orden_url' => $event->relationLoaded('ordenTecnica') && $event->ordenTecnica && Auth::user()?->can('actividades-tecnicas.ver')
+                    ? route('actividades-tecnicas.ordenes.show', $event->ordenTecnica) : null,
                 'tipo' => $event->tipo,
                 'assigned_user_id' => $this->normalizarResponsable($event->assigned_user_id),
                 'contacto' => $event->contacto,
@@ -69,9 +87,9 @@ class AgendaController extends Controller
 
     public function index()
     {
-        $events = Agenda::activos()->whereNotNull('fecha_inicio')->get()
+        $events = $this->integrarConsultaAgenda(Agenda::activos()->whereNotNull('fecha_inicio'))->get()
             ->map(fn($event) => $this->eventoCalendario($event));
-        $unassignedEvents = Agenda::whereNull('fecha_inicio')->where('estado', 1)->get();
+        $unassignedEvents = $this->integrarConsultaAgenda(Agenda::whereNull('fecha_inicio')->where('estado', 1))->get();
         $usuarios = [];
         foreach (self::USUARIOS as $id => $name) {
             $usuarios[] = ['id' => (string) $id, 'name' => $name];
@@ -81,7 +99,7 @@ class AgendaController extends Controller
 
     public function getEvents(Request $request)
     {
-        return response()->json(Agenda::whereNotNull('fecha_inicio')->where('estado', 1)
+        return response()->json($this->integrarConsultaAgenda(Agenda::whereNotNull('fecha_inicio')->where('estado', 1))
             ->get()->map(fn($event) => $this->eventoCalendario($event)));
     }
 
@@ -91,7 +109,7 @@ class AgendaController extends Controller
         try {
             Excel::import(new AgendaImport, $request->file('file'));
             return response()->json(['success' => true, 'message' => 'Registros importados correctamente.']);
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
             Log::error('Error al importar agenda.', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'No se pudo importar el archivo. Revisa el registro del servidor.'], 500);
         }
@@ -134,6 +152,7 @@ class AgendaController extends Controller
             'assigned_user_id' => $this->reglasResponsable(),
         ]);
         $event = Agenda::findOrFail($id);
+        $this->autorizarOrden($event);
         try {
             $changes = [
                 'fecha_inicio' => Carbon::parse($data['start'])->format('Y-m-d H:i:s'),
@@ -143,7 +162,7 @@ class AgendaController extends Controller
                 $changes['assigned_user_id'] = $this->normalizarResponsable($data['assigned_user_id']);
             }
             $event->update($changes);
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
             Log::error('No se pudo guardar la fecha.', ['agenda_id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'No se pudo guardar la fecha.'], 500);
         }
@@ -171,7 +190,7 @@ class AgendaController extends Controller
     //                 ? $data['assigned_user_id'] : $event->assigned_user_id),
     //             'estado' => $data['estado'] ?? $event->estado,
     //         ]);
-    //     } catch (\Throwable $e) {
+    //     } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
     //         Log::error('No se pudo guardar la actividad.', ['agenda_id' => $event->id, 'error' => $e->getMessage()]);
     //         return response()->json(['success' => false, 'message' => 'No se pudo guardar la actividad.'], 500);
     //     }
@@ -193,6 +212,7 @@ class AgendaController extends Controller
             'servicio' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
+        $this->autorizarOrden($event);
         try {
             if (array_key_exists('title', $data)) {
                 $event->titulo = $data['title'];
@@ -220,7 +240,7 @@ class AgendaController extends Controller
                 $event->estado = $data['estado'];
             }
             $event->save();
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
             Log::error('No se pudo guardar la actividad.', [
                 'agenda_id' => $event->id,
                 'error' => $e->getMessage(),
@@ -251,9 +271,10 @@ class AgendaController extends Controller
         // Completar mediante el ID LOCAL; no crear una tarea nueva para cerrarla.
         $data = $request->validate(['id' => ['required', 'integer']]);
         $event = Agenda::findOrFail($data['id']);
+        $this->autorizarOrden($event);
         try {
             $event->update(['estado' => 2]);
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
             Log::error('No se pudo completar la actividad.', ['agenda_id' => $event->id, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'No se pudo completar la actividad.'], 500);
         }
@@ -350,7 +371,7 @@ class AgendaController extends Controller
                     foreach ($ids as $taskId) {
                         try {
                             $this->verificarRespuesta($service->completeTask($taskId), 'No se pudo completar la tarea ' . $taskId);
-                        } catch (\Throwable $e) {
+                        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
                             $errors[] = $e->getMessage();
                         }
                     }
@@ -468,7 +489,7 @@ $luisId = $users['8503605'];
                             // Conservar cada éxito parcial para el próximo intento.
                             $this->guardarIdsAgendaTodoist($event, $ids);
                         }
-                    } catch (\Throwable $e) {
+                    } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
                         Log::warning('Todoist: destinatario pendiente.', ['agenda_id' => $event->id, 'destinatario' => $name, 'error' => $e->getMessage()]);
                         $errors[] = $e->getMessage();
                         // Si falló la persistencia tras crear, detener para no crear más copias sin guardar.
@@ -483,14 +504,14 @@ $luisId = $users['8503605'];
                             $this->verificarRespuesta($service->completeTask($taskId), 'No se pudo archivar la copia ' . $taskId);
                             $ids = array_values(array_filter($ids, fn($id) => (string) $id !== (string) $taskId));
                             $this->guardarIdsAgendaTodoist($event, $ids);
-                        } catch (\Throwable $e) {
+                        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
                             $errors[] = $e->getMessage();
                         }
                     }
                 }
                 return ['success' => empty($errors), 'action' => 'sincronizar', 'errors' => $errors];
             });
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
             Log::error('Todoist: sincronización incompleta.', ['agenda_id' => $event->id, 'error' => $e->getMessage()]);
             return ['success' => false, 'action' => 'error', 'errors' => [$e->getMessage()]];
         }
@@ -669,9 +690,9 @@ $luisId = $users['8503605'];
                         foreach ($this->idsAgendaTodoist($evento) as $taskId) {
                             if (isset($confirmadas[(string) $taskId])) {
                                 // Actualización directa: no llamar a enviarATodoist().
-                                return Agenda::whereKey($evento->id)
-                                    ->where('estado', 1)
-                                    ->update(['estado' => 2]);
+                                $this->autorizarOrden($evento);
+                                $evento->update(['estado' => 2]);
+                                return 1;
                             }
                         }
 
@@ -697,7 +718,7 @@ $luisId = $users['8503605'];
                 'success' => false,
                 'message' => 'Ya hay una verificación en curso.',
             ], 409);
-    } catch (\Throwable $e) {
+    } catch (\Illuminate\Auth\Access\AuthorizationException | \Illuminate\Validation\ValidationException | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { throw $e; } catch (\Throwable $e) {
         Log::error('Error al verificar completadas de Todoist.', [
             'error' => $e->getMessage(),
         ]);
@@ -709,3 +730,4 @@ $luisId = $users['8503605'];
     }
 }
 }
+

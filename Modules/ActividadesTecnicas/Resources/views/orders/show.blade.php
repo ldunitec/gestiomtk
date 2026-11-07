@@ -3,6 +3,11 @@
 @section('content_header')<h1>{{ $order->order_number }} — {{ $order->title }}</h1>@stop
 @section('at_content')
 <div class="card"><div class="card-body">
+    @if($order->agenda)
+    <div class="alert alert-info">Actividad #{{ $order->agenda_id }} de Agenda de Producción · {{ $order->agenda->tipo }} ·
+    {{ \Modules\Produccion\Http\Controllers\AgendaController::responsablesOrden()[(string)$order->agenda->assigned_user_id] ?? 'Todo el equipo' }}
+    <a class="btn btn-sm btn-outline-primary ml-2" href="{{ route('produccion.admin.agendas.index', ['actividad'=>$order->agenda_id]) }}">Ver en agenda</a></div>
+    @endif
     <p><strong>Estado:</strong> {{ $order->statusLabel() }}</p>
     <p><strong>Prioridad:</strong> {{ $order->priorityLabel() }}</p>
     <p><strong>Cliente:</strong> {{ $order->client?->name ?? 'No asignado' }}</p>
@@ -28,3 +33,4 @@
 @endforeach
 </tbody></table></div></div>
 @stop
+

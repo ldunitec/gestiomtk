@@ -31,8 +31,20 @@ protected $casts = [
     'usuarios' => 'array',
    'todoist_task_id' => 'string',
 ];
+// Las actualizaciones y el historial de la orden vinculada deben confirmarse juntos.
+public function save(array $options = [])
+{
+    return \Illuminate\Support\Facades\DB::transaction(fn () => parent::save($options));
+}
+
+public function ordenTecnica()
+{
+    return $this->hasOne(\Modules\ActividadesTecnicas\Models\WorkOrder::class, 'agenda_id');
+}
+
 public function scopeActivos($query)
 {
     return $query->where('estado', 1);
 }
 }
+
